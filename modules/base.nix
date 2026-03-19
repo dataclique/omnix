@@ -1,7 +1,14 @@
-{ lib, config, pkgs, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 
-let cfg = config.omnix.base;
-in {
+let
+  cfg = config.omnix.base;
+in
+{
   options.omnix.base = {
     enable = lib.mkEnableOption "omnix base NixOS settings";
 
@@ -18,7 +25,6 @@ in {
 
     stateVersion = lib.mkOption {
       type = lib.types.str;
-      default = "24.11";
       description = "NixOS state version";
     };
   };
@@ -36,7 +42,10 @@ in {
 
     nix = {
       settings = {
-        experimental-features = [ "nix-command" "flakes" ];
+        experimental-features = [
+          "nix-command"
+          "flakes"
+        ];
         auto-optimise-store = true;
         download-buffer-size = 268435456;
       };
@@ -50,11 +59,18 @@ in {
 
     programs.bash.interactiveShellInit = "set -o vi";
 
-    system.activationScripts.per-service-profiles.text =
-      "mkdir -p /nix/var/nix/profiles/per-service";
+    system.activationScripts.per-service-profiles.text = "mkdir -p /nix/var/nix/profiles/per-service";
 
-    environment.systemPackages = with pkgs;
-      [ bat curl htop rage zellij ] ++ cfg.extraPackages;
+    environment.systemPackages =
+      with pkgs;
+      [
+        bat
+        curl
+        htop
+        rage
+        zellij
+      ]
+      ++ cfg.extraPackages;
 
     system.stateVersion = cfg.stateVersion;
   };

@@ -1,0 +1,138 @@
+name: Integration Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      droplet_size:
+        description: "DigitalOcean droplet size"
+        default: "s-1vcpu-2gb"
+        type: string
+      region:
+        description: "DigitalOcean region"
+        default: "nyc3"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: integration-test
+  cancel-in-progress: false
+
+env:
+  TEST_DIR: integration-test
+
+jobs:
+  test:
+    name: Full lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            accept-flake-config = true
+            fallback = true
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Setup SSH identity
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Scaffold test project from template
+        run: |
+          mkdir -p "$TEST_DIR"
+          cd "$TEST_DIR"
+          nix flake init -t ..#do-service
+
+          # Point omnix input to the local checkout
+          sed -i 's|github:data-cartel/omnix|path:../|' flake.nix
+
+          # Rename resources to avoid collisions with real infra
+          sed -i 's/my-service/omnix-integration-test/g' infra/main.tf
+          sed -i 's/my-service/omnix-integration-test/g' os.nix
+          sed -i 's/my-service/omnix-integration-test/g' services.nix
+          sed -i 's/my-service-op/omnix-integration-test/g' infra/variables.tf
+
+          # Derive public key from the private key
+          PUBKEY=$(ssh-keygen -y -f ~/.ssh/id_ed25519)
+
+          # Write keys.nix with the CI key
+          cat > keys.nix <<KEYS
+          rec {
+            keys = {
+              operator = "$PUBKEY";
+              ci = "$PUBKEY";
+              host = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDER";
+            };
+            roles = with keys; {
+              infra = [ operator ci ];
+              service = [ host operator ];
+              ssh = [ operator ci ];
+            };
+          }
+          KEYS
+
+      - name: Terraform init and apply
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          # Decrypt terraform vars using the SSH identity
+          nix run .#tfInit -- -i ~/.ssh/id_ed25519
+          nix run .#tfPlan -- -i ~/.ssh/id_ed25519
+          nix run .#tfApply -- -i ~/.ssh/id_ed25519
+
+      - name: Resolve host IP
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          HOST_IP=$(nix run .#resolveIp -- -i ~/.ssh/id_ed25519 2>/dev/null)
+          echo "::add-mask::$HOST_IP"
+          echo "HOST_IP=$HOST_IP" >> "$GITHUB_ENV"
+
+      - name: Wait for SSH
+        run: |
+          retries=0
+          until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+            -i ~/.ssh/id_ed25519 "root@$HOST_IP" true 2>/dev/null; do
+            retries=$((retries + 1))
+            if [ "$retries" -ge 30 ]; then
+              echo "SSH not available after 2.5 minutes" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Bootstrap NixOS
+        working-directory: ${{ env.TEST_DIR }}
+        run: nix run .#bootstrap -- -i ~/.ssh/id_ed25519
+
+      - name: Deploy system
+        working-directory: ${{ env.TEST_DIR }}
+        run: nix run .#deployNixos -- -i ~/.ssh/id_ed25519
+
+      - name: Verify SSH access
+        run: ssh -i ~/.ssh/id_ed25519 "root@$HOST_IP" uname -a
+
+      - name: Verify NixOS
+        run: |
+          RESULT=$(ssh -i ~/.ssh/id_ed25519 "root@$HOST_IP" \
+            "grep -c NixOS /etc/os-release")
+          if [ "$RESULT" -lt 1 ]; then
+            echo "Host is not running NixOS" >&2
+            exit 1
+          fi
+
+      - name: Teardown
+        if: always()
+        working-directory: ${{ env.TEST_DIR }}
+        run: nix run .#tfDestroy -- -i ~/.ssh/id_ed25519 || true
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -rf ~/.ssh/id_ed25519

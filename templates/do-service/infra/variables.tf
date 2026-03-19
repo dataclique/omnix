@@ -2,6 +2,11 @@ variable "do_token" {
   description = "DigitalOcean API token"
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(var.do_token) > 0
+    error_message = "do_token must not be empty."
+  }
 }
 
 variable "ssh_key_name" {
@@ -26,4 +31,9 @@ variable "volume_size_gb" {
   description = "Data volume size in GB"
   type        = number
   default     = 5
+
+  validation {
+    condition     = var.volume_size_gb >= 1
+    error_message = "volume_size_gb must be at least 1."
+  }
 }
