@@ -1,44 +1,32 @@
-{ pkgs, keysFile, system, ragenixPkg ? null, secretsRules ? null }:
+{
+  pkgs,
+  keysFile,
+  ragenixPkg ? null,
+  secretsRules ? null,
+  ...
+}:
 
 let
-  buildInputs = [ pkgs.terraform pkgs.rage pkgs.jq ]
-    ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
+  shell = import ./shell.nix { inherit keysFile; };
+  inherit (shell)
+    tfState
+    tfVars
+    parseIdentity
+    decryptState
+    encryptState
+    decryptVars
+    encryptVars
+    resolveIp
+    ;
 
-  tfState = "infra/terraform.tfstate";
-  tfVars = "infra/terraform.tfvars";
+  buildInputs = [
+    pkgs.terraform
+    pkgs.rage
+    pkgs.jq
+  ]
+  ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
+
   tfPlanFile = "infra/tfplan";
-
-  parseIdentity = ''
-    set -eo pipefail
-
-    identity=~/.ssh/id_ed25519
-    if [ "''${1:-}" = "-i" ]; then
-      identity="$2"
-      shift 2
-    fi
-  '';
-
-  decryptState = ''
-    if [ -f ${tfState}.age ]; then
-      rage -d -i "$identity" ${tfState}.age > ${tfState}
-    fi
-  '';
-
-  encryptState = ''
-    if [ -f ${tfState} ]; then
-      nix eval --raw --file ${keysFile} roles.infra --apply 'builtins.concatStringsSep "\n"' \
-        | rage -e -R /dev/stdin -o ${tfState}.age ${tfState}
-    fi
-  '';
-
-  decryptVars = ''
-    rage -d -i "$identity" ${tfVars}.age > ${tfVars}
-  '';
-
-  encryptVars = ''
-    nix eval --raw --file ${keysFile} roles.infra --apply 'builtins.concatStringsSep "\n"' \
-      | rage -e -R /dev/stdin -o ${tfVars}.age ${tfVars}
-  '';
 
   cleanup = "rm -f ${tfState} ${tfState}.backup ${tfVars}";
   cleanupWithPlan = "${cleanup} ${tfPlanFile}";
@@ -73,21 +61,16 @@ let
     ${encryptVars}
   '';
 
-  resolveIp = ''
-    ${parseIdentity}
-    ${decryptState}
-    host_ip=$(jq -r '.outputs.droplet_ipv4.value' ${tfState})
-    rm -f ${tfState}
-  '';
-
-  mkTask = name: body:
+  mkTask =
+    name: body:
     pkgs.writeShellApplication {
       inherit name;
       runtimeInputs = buildInputs;
       text = body;
     };
 
-in {
+in
+{
   inherit buildInputs parseIdentity resolveIp;
 
   tfInit = mkTask "tf-init" ''
@@ -137,17 +120,22 @@ in {
     ${rekeyPreamble}
   '';
 
-  rekey = if ragenixPkg != null && secretsRules != null then
-    mkTask "rekey" ''
-      ${rekeyPreamble}
-      ragenix --rules ${secretsRules} -i "$identity" -r
-    ''
-  else
-    null;
+  rekey =
+    if ragenixPkg != null && secretsRules != null then
+      mkTask "rekey" ''
+        ${rekeyPreamble}
+        ragenix --rules ${secretsRules} -i "$identity" -r
+      ''
+    else
+      null;
 
   remote = pkgs.writeShellApplication {
     name = "remote";
-    runtimeInputs = [ pkgs.rage pkgs.jq pkgs.openssh ];
+    runtimeInputs = [
+      pkgs.rage
+      pkgs.jq
+      pkgs.openssh
+    ];
     text = ''
       ${resolveIp}
       exec ssh -i "$identity" "root@$host_ip" "$@"

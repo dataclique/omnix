@@ -1,31 +1,43 @@
 { deploy-rs }:
 
-{ self, nodeName, services, package, nixosConfig ? null }:
+{
+  self,
+  nodeName,
+  services,
+  package,
+  nixosConfig ? null,
+  targetSystem ? "x86_64-linux",
+}:
 
 let
-  system = "x86_64-linux";
+  system = targetSystem;
   inherit (deploy-rs.lib.${system}) activate;
   profileBase = "/nix/var/nix/profiles/per-service";
 
-  enabledServices = builtins.filter (name: services.${name}.enabled)
-    (builtins.attrNames services);
+  enabledServices = builtins.filter (name: services.${name}.enabled) (builtins.attrNames services);
 
-  mkServiceProfile = name:
-    let markerFile = "/run/${nodeName}/${name}.ready";
-    in activate.custom package (builtins.concatStringsSep " && " [
-      "systemctl stop ${name} || true"
-      "rm -f ${markerFile}"
-      "mkdir -p /run/${nodeName}"
-      "touch ${markerFile}"
-      "systemctl restart ${name}"
-    ]);
+  mkServiceProfile =
+    name:
+    let
+      markerFile = "/run/${nodeName}/${name}.ready";
+    in
+    activate.custom package (
+      builtins.concatStringsSep " && " [
+        "systemctl stop ${name} || true"
+        "rm -f ${markerFile}"
+        "mkdir -p /run/${nodeName}"
+        "touch ${markerFile}"
+        "systemctl restart ${name}"
+      ]
+    );
 
   mkProfile = name: {
     path = mkServiceProfile name;
     profilePath = "${profileBase}/${name}";
   };
 
-in {
+in
+{
   config = {
     nodes.${nodeName} = {
       hostname = "MUST_OVERRIDE_HOSTNAME";
@@ -35,21 +47,33 @@ in {
       profilesOrder = [ "system" ] ++ enabledServices;
 
       profiles = {
-        system.path = if nixosConfig != null then
-          activate.nixos nixosConfig
-        else
-          activate.nixos self.nixosConfigurations.${nodeName};
-      } // builtins.listToAttrs (map (name: {
-        inherit name;
-        value = mkProfile name;
-      }) enabledServices);
+        system.path =
+          if nixosConfig != null then
+            activate.nixos nixosConfig
+          else
+            activate.nixos self.nixosConfigurations.${nodeName};
+      }
+      // builtins.listToAttrs (
+        map (name: {
+          inherit name;
+          value = mkProfile name;
+        }) enabledServices
+      );
     };
   };
 
-  wrappers = { pkgs, infraPkgs, localSystem }:
+  wrappers =
+    {
+      pkgs,
+      infraPkgs,
+      localSystem,
+    }:
     let
-      deployInputs =
-        [ pkgs.rage pkgs.jq deploy-rs.packages.${localSystem}.deploy-rs ];
+      deployInputs = [
+        pkgs.rage
+        pkgs.jq
+        deploy-rs.packages.${localSystem}.deploy-rs
+      ];
 
       deployPreamble = ''
         ${infraPkgs.resolveIp}
@@ -66,15 +90,15 @@ in {
         fi
       '';
 
-      deployFlags = if localSystem == "x86_64-linux" then
-        "--skip-checks"
-      else
-        "--remote-build --skip-checks";
+      deployFlags =
+        if localSystem == "x86_64-linux" then "--skip-checks" else "--remote-build --skip-checks";
 
-      serviceCleanup = builtins.concatStringsSep "; "
-        (map (name: "systemctl reset-failed ${name} || true") enabledServices);
+      serviceCleanup = builtins.concatStringsSep "; " (
+        map (name: "systemctl reset-failed ${name} || true") enabledServices
+      );
 
-    in {
+    in
+    {
       deployNixos = pkgs.writeShellApplication {
         name = "deploy-nixos";
         runtimeInputs = deployInputs;
