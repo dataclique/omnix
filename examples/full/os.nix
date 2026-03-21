@@ -27,6 +27,12 @@
         dataDir = "/mnt/data/api";
         logDir = "/mnt/data/api/logs";
       };
+      staging-api = {
+        enabled = true;
+        bin = "api-server";
+        dataDir = "/mnt/data/staging-api";
+        logDir = "/mnt/data/staging-api/logs";
+      };
       worker = {
         enabled = true;
         bin = "worker";

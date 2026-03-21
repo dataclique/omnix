@@ -115,6 +115,16 @@ All omnix scripts are written in nushell. No bash.
 
 Never suppress Nix evaluation errors or warnings.
 
+A comment explaining a poor design choice is never an answer to the design
+choice itself. If the code is wrong, fix it. If a reviewer points out a problem,
+change the code — don't add a comment defending why it's the way it is.
+
+**Every change must improve something**: A change that doesn't make things
+better is worse than no change — it's overhead for reviewers. When refactoring
+to fix lints (e.g., cognitive complexity), ensure the extraction actually
+addresses the metric. Extracting trivial logging statements doesn't reduce
+control flow complexity; extracting logic with branches/loops does.
+
 ### No application opinions
 
 omnix handles infrastructure. It must never contain:
