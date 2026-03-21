@@ -121,6 +121,12 @@
             src = self;
           };
 
+          checks.examples = pkgs.runCommand "validate-examples" { nativeBuildInputs = [ pkgs.nushell ]; } ''
+            cd ${self}
+            nu scripts/validate-examples.nu examples
+            touch $out
+          '';
+
           formatter = pkgs.nixfmt;
 
           devShells.default = pkgs.mkShell {
