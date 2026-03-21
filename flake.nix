@@ -130,7 +130,7 @@
           formatter = pkgs.nixfmt;
 
           devShells.default = pkgs.mkShell {
-            inherit (self.checks.${system}.git-hooks) shellHook enabledPackages;
+            inherit (self.checks.${system}.git-hooks) shellHook;
             packages = self.checks.${system}.git-hooks.enabledPackages;
           };
         };

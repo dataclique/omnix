@@ -120,10 +120,13 @@ choice itself. If the code is wrong, fix it. If a reviewer points out a problem,
 change the code — don't add a comment defending why it's the way it is.
 
 **Every change must improve something**: A change that doesn't make things
-better is worse than no change — it's overhead for reviewers. When refactoring
-to fix lints (e.g., cognitive complexity), ensure the extraction actually
-addresses the metric. Extracting trivial logging statements doesn't reduce
-control flow complexity; extracting logic with branches/loops does.
+better is worse than no change — it's overhead for reviewers. Acceptable
+improvements: correctness, reliability, security, maintainability, documentation
+accuracy, and test coverage. Prerequisite or mechanical changes (linting,
+formatting, refactors) are acceptable when clearly tied to a follow-up objective
+described in the PR description. Trivial extractions (e.g., moving a single
+logging line) do not count unless they reduce measurable complexity or support
+the stated follow-up objective.
 
 ### No application opinions
 
