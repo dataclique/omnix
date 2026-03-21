@@ -2,6 +2,9 @@
 # Provides mkNuScript to create derivations that invoke nushell scripts.
 { pkgs, scriptsDir }:
 
+let
+  inherit (pkgs.lib) escapeShellArg;
+in
 {
   mkNuScript =
     {
@@ -13,14 +16,15 @@
     }:
     let
       nuPath = scriptsDir + "/${script}";
-      cmd = if subcommand != null then "nu ${nuPath} ${subcommand}" else "nu ${nuPath}";
-      argsStr = builtins.concatStringsSep " " (map (a: ''"${a}"'') extraArgs);
+      quotedPath = escapeShellArg nuPath;
+      subcmdStr = if subcommand != null then " ${escapeShellArg subcommand}" else "";
+      argsStr = builtins.concatStringsSep " " (map escapeShellArg extraArgs);
     in
     pkgs.writeShellApplication {
       inherit name;
       runtimeInputs = [ pkgs.nushell ] ++ runtimeInputs;
       text = ''
-        ${cmd} ${argsStr} "$@"
+        nu ${quotedPath}${subcmdStr} ${argsStr} "$@"
       '';
     };
 }

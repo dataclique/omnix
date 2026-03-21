@@ -29,8 +29,8 @@ def extract-host-key [identity: string, host_ip: string]: nothing -> string {
   $"($parts.0) ($parts.1)"
 }
 
-def update-keys-nix [new_key: string] {
-  let content = (open keys.nix --raw)
+def update-keys-nix [keys_file: string, new_key: string] {
+  let content = (open $keys_file --raw)
   let updated = ($content
     | str replace --regex 'host =\n      "ssh-ed25519 [^"]*"' $'host =\n      "($new_key)"')
 
@@ -38,8 +38,8 @@ def update-keys-nix [new_key: string] {
     error make { msg: "host key replacement in keys.nix failed" }
   }
 
-  $updated | save -f keys.nix
-  print "Updated host key in keys.nix"
+  $updated | save -f $keys_file
+  print $"Updated host key in ($keys_file)"
 }
 
 export def main [
@@ -58,7 +58,7 @@ export def main [
   wait-for-ssh $resolved.identity $resolved.host_ip
 
   let new_key = (extract-host-key $resolved.identity $resolved.host_ip)
-  update-keys-nix $new_key
+  update-keys-nix $keys_file $new_key
 
   if ($secrets_rules != null) {
     print "Rekeying secrets..."

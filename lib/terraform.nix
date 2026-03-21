@@ -37,6 +37,9 @@ in
   tfImport = mkTfTask "tf-import" "import";
   tfEditVars = mkTfTask "tf-edit-vars" "edit-vars";
 
+  # tfRekey is always available (optionally passes --secrets-rules).
+  # rekey only exists when ragenixPkg and secretsRules are both provided,
+  # because it invokes ragenix which requires both.
   tfRekey = mkNuScript {
     name = "tf-rekey";
     script = "terraform.nu";

@@ -30,7 +30,9 @@
 - `nixosModules.default` now includes upstream disko and ragenix modules
 - Shell helpers hardened: `chmod 600` on decrypted terraform files, `jq -e` for
   fail-fast on missing IP
-- Consolidated duplicate shell fragments into `lib/shell.nix`
+- Rewrote `lib/shell.nix` to expose `mkNuScript` for nushell script wrapping;
+  removed prior bash/age helper exports (`parseIdentity`, `resolveIp`,
+  `decryptState`, etc.)
 - `pkgs.openssh` added to bootstrap runtimeInputs
 
 ### Removed

@@ -3,15 +3,12 @@
 
 use common.nu *
 
-# Initialize terraform.
-export def "main init" [
-  keys_file: string
-  ...args: string
-] {
+# Run a terraform command with decrypted vars only (no state encryption).
+def with-tf-vars [keys_file: string, args: list<string>, action: closure] {
   let parsed = (parse-identity ...$args)
   try {
     decrypt-vars $parsed.identity
-    ^terraform -chdir=infra init ...$parsed.rest
+    do $action $parsed.rest
   } catch { |e|
     cleanup
     error make { msg: $e.msg }
@@ -19,85 +16,58 @@ export def "main init" [
   cleanup
 }
 
+# Run a terraform command that reads and writes state (encrypts after).
+def with-tf-state [keys_file: string, args: list<string>, action: closure] {
+  let parsed = (parse-identity ...$args)
+  try {
+    decrypt-vars $parsed.identity
+    decrypt-state $parsed.identity
+    do $action $parsed.rest
+    encrypt-state $keys_file
+  } catch { |e|
+    encrypt-state $keys_file
+    cleanup-with-plan
+    error make { msg: $e.msg }
+  }
+  cleanup-with-plan
+}
+
+# Initialize terraform.
+export def "main init" [keys_file: string, ...args: string] {
+  with-tf-vars $keys_file $args {|rest| ^terraform -chdir=infra init ...$rest }
+}
+
 # Plan terraform changes.
-export def "main plan" [
-  keys_file: string
-  ...args: string
-] {
+export def "main plan" [keys_file: string, ...args: string] {
   let parsed = (parse-identity ...$args)
   try {
     decrypt-vars $parsed.identity
     decrypt-state $parsed.identity
     ^terraform -chdir=infra plan -out=tfplan ...$parsed.rest
   } catch { |e|
-    cleanup
+    cleanup-with-plan
     error make { msg: $e.msg }
   }
-  cleanup
+  cleanup-with-plan
 }
 
 # Apply terraform changes (re-encrypts state after).
-export def "main apply" [
-  keys_file: string
-  ...args: string
-] {
-  let parsed = (parse-identity ...$args)
-  try {
-    decrypt-vars $parsed.identity
-    decrypt-state $parsed.identity
-    ^terraform -chdir=infra apply ...$parsed.rest tfplan
-    encrypt-state $keys_file
-  } catch { |e|
-    encrypt-state $keys_file
-    cleanup-with-plan
-    error make { msg: $e.msg }
-  }
-  cleanup-with-plan
+export def "main apply" [keys_file: string, ...args: string] {
+  with-tf-state $keys_file $args {|rest| ^terraform -chdir=infra apply ...$rest tfplan }
 }
 
 # Destroy terraform infrastructure (re-encrypts state after).
-export def "main destroy" [
-  keys_file: string
-  ...args: string
-] {
-  let parsed = (parse-identity ...$args)
-  try {
-    decrypt-vars $parsed.identity
-    decrypt-state $parsed.identity
-    ^terraform -chdir=infra destroy ...$parsed.rest
-    encrypt-state $keys_file
-  } catch { |e|
-    encrypt-state $keys_file
-    cleanup-with-plan
-    error make { msg: $e.msg }
-  }
-  cleanup-with-plan
+export def "main destroy" [keys_file: string, ...args: string] {
+  with-tf-state $keys_file $args {|rest| ^terraform -chdir=infra destroy ...$rest }
 }
 
 # Import a terraform resource (re-encrypts state after).
-export def "main import" [
-  keys_file: string
-  ...args: string
-] {
-  let parsed = (parse-identity ...$args)
-  try {
-    decrypt-vars $parsed.identity
-    decrypt-state $parsed.identity
-    ^terraform -chdir=infra import ...$parsed.rest
-    encrypt-state $keys_file
-  } catch { |e|
-    encrypt-state $keys_file
-    cleanup-with-plan
-    error make { msg: $e.msg }
-  }
-  cleanup-with-plan
+export def "main import" [keys_file: string, ...args: string] {
+  with-tf-state $keys_file $args {|rest| ^terraform -chdir=infra import ...$rest }
 }
 
 # Edit terraform variables (decrypt, open in $EDITOR, re-encrypt).
-export def "main edit-vars" [
-  keys_file: string
-  ...args: string
-] {
+export def "main edit-vars" [keys_file: string, ...args: string] {
   let parsed = (parse-identity ...$args)
   let vars_file = "infra/terraform.tfvars"
   let vars_age = $"($vars_file).age"
@@ -144,19 +114,13 @@ export def "main rekey" [
 }
 
 # SSH into the remote host.
-export def "main remote" [
-  keys_file: string
-  ...args: string
-] {
+export def "main remote" [keys_file: string, ...args: string] {
   let resolved = (resolve-ip $keys_file ...$args)
   ^ssh -i $resolved.identity $"root@($resolved.host_ip)" ...$resolved.rest
 }
 
 # Print the resolved host IP.
-export def "main resolve-ip" [
-  keys_file: string
-  ...args: string
-] {
+export def "main resolve-ip" [keys_file: string, ...args: string] {
   let resolved = (resolve-ip $keys_file ...$args)
   print $resolved.host_ip
 }

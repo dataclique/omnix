@@ -6,15 +6,27 @@ All omnix shell scripts (terraform wrappers, bootstrap, deploy, remote) are
 currently bash embedded in Nix via `writeShellApplication`. Migrate to nushell
 for type safety, structured data, testability, and composability.
 
-- [ ] Create `scripts/` directory with nushell modules
-- [ ] Migrate lib/shell.nix fragments (parse-identity, resolve-ip,
-      decrypt/encrypt state/vars) to nushell
-- [ ] Migrate lib/terraform.nix tasks (tfInit, tfPlan, tfApply, tfDestroy,
-      tfImport, tfEditVars, tfRekey, rekey, remote)
-- [ ] Migrate lib/bootstrap.nix (bootstrap-nixos)
-- [ ] Migrate lib/deploy.nix wrappers (deployNixos, deployService, deployAll)
-- [ ] Write tests for each script (`scripts/*.test.nu`)
-- [ ] Update Nix wrappers to invoke nushell instead of bash
+### Independent migrations (parallelizable)
+
+- [x] scripts/common.nu -- shared helpers (parse-identity, resolve-ip,
+      decrypt/encrypt state/vars)
+- [x] scripts/terraform.nu -- all terraform tasks (init, plan, apply, destroy,
+      import, edit-vars, rekey, remote, resolve-ip)
+- [x] scripts/bootstrap.nu -- nixos-anywhere bootstrap
+- [x] scripts/deploy.nu -- deploy-rs wrappers (nixos, service, all)
+
+### Dependent on above
+
+- [x] lib/shell.nix -- rewritten to mkNuScript (nushell wrapper infra)
+- [x] lib/terraform.nix, lib/bootstrap.nix, lib/deploy.nix -- updated to use
+      mkNuScript
+
+### Testing (alongside each migration)
+
+- [x] scripts/common.test.nu -- parse-identity tests
+- [ ] scripts/terraform.test.nu -- unit tests for pure helpers
+- [ ] scripts/deploy.test.nu -- unit tests for build-deploy-args
+- [ ] scripts/bootstrap.test.nu -- unit tests for update-keys-nix
 
 ## Refactor to idiomatic Nix
 

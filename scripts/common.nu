@@ -30,14 +30,20 @@ export def encrypt-state [keys_file: string] {
   if ($TF_STATE | path exists) {
     let recipients = (^nix eval --raw --file $keys_file roles.infra
       --apply 'builtins.concatStringsSep "\n"')
+    if ($recipients | is-empty) {
+      error make { msg: "no recipients found in keys.nix roles.infra — cannot encrypt state" }
+    }
     $recipients | ^rage -e -R /dev/stdin -o $"($TF_STATE).age" $TF_STATE
   }
 }
 
 # Decrypt terraform variables from age-encrypted file.
 export def decrypt-vars [identity: string] {
-  ^rage -d -i $identity $"($TF_VARS).age" | save -f $TF_VARS
-  ^chmod 600 $TF_VARS
+  let encrypted = $"($TF_VARS).age"
+  if ($encrypted | path exists) {
+    ^rage -d -i $identity $encrypted | save -f $TF_VARS
+    ^chmod 600 $TF_VARS
+  }
 }
 
 # Encrypt terraform variables to age-encrypted file using keys.nix roles.
@@ -51,19 +57,20 @@ export def encrypt-vars [keys_file: string] {
 # Returns a record with identity and host_ip.
 export def resolve-ip [
   keys_file: string
+  --output-key: string = "outputs.droplet_ipv4.value"  # terraform output path for host IP
   ...args: string
-]: nothing -> record<identity: string, host_ip: string> {
+]: nothing -> record<identity: string, host_ip: string, rest: list<string>> {
   let parsed = (parse-identity ...$args)
   decrypt-state $parsed.identity
 
-  let host_ip = (open $TF_STATE | get outputs.droplet_ipv4.value)
+  let host_ip = (open $TF_STATE | get $output_key)
   rm -f $TF_STATE
 
   if ($host_ip | is-empty) {
     error make { msg: "failed to resolve droplet IP from terraform state" }
   }
 
-  { identity: $parsed.identity, host_ip: $host_ip }
+  { identity: $parsed.identity, host_ip: $host_ip, rest: $parsed.rest }
 }
 
 # Remove decrypted terraform files.

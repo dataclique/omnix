@@ -10,10 +10,6 @@ def deploy-preamble [
 ]: nothing -> record<identity: string, host_ip: string, ssh_flag: string, deploy_flags: string, rest: list<string>> {
   let resolved = (resolve-ip $keys_file ...$args)
 
-  if ($resolved.host_ip | is-empty) {
-    error make { msg: "host_ip not resolved" }
-  }
-
   let default_identity = ($env.HOME | path join ".ssh" "id_ed25519")
   let ssh_flag = if $resolved.identity != $default_identity {
     $env.NIX_SSHOPTS = $"-i ($resolved.identity)"
@@ -37,6 +33,15 @@ def deploy-preamble [
   }
 }
 
+def build-deploy-args [
+  ctx: record
+  target: string
+]: nothing -> list<string> {
+  mut args = [$ctx.deploy_flags --hostname $ctx.host_ip]
+  if ($ctx.ssh_flag | is-not-empty) { $args = ($args | append $ctx.ssh_flag) }
+  $args | append $ctx.rest | append $target
+}
+
 # Deploy only the NixOS system profile.
 export def "main nixos" [
   keys_file: string
@@ -45,10 +50,7 @@ export def "main nixos" [
   ...args: string
 ] {
   let ctx = (deploy-preamble $keys_file $local_system ...$args)
-  mut deploy_args = [$ctx.deploy_flags --hostname $ctx.host_ip]
-  if ($ctx.ssh_flag | is-not-empty) { $deploy_args = ($deploy_args | append $ctx.ssh_flag) }
-  $deploy_args = ($deploy_args | append $ctx.rest | append $".#($node_name).system")
-  ^deploy ...$deploy_args
+  ^deploy ...(build-deploy-args $ctx $".#($node_name).system")
 }
 
 # Deploy a single service profile.
@@ -60,10 +62,7 @@ export def "main service" [
   ...args: string
 ] {
   let ctx = (deploy-preamble $keys_file $local_system ...$args)
-  mut deploy_args = [$ctx.deploy_flags --hostname $ctx.host_ip]
-  if ($ctx.ssh_flag | is-not-empty) { $deploy_args = ($deploy_args | append $ctx.ssh_flag) }
-  $deploy_args = ($deploy_args | append $ctx.rest | append $".#($node_name).($profile)")
-  ^deploy ...$deploy_args
+  ^deploy ...(build-deploy-args $ctx $".#($node_name).($profile)")
 }
 
 # Deploy system + all service profiles.
@@ -80,10 +79,7 @@ export def "main all" [
     ^ssh -i $ctx.identity $"root@($ctx.host_ip)" $service_cleanup
   }
 
-  mut deploy_args = [$ctx.deploy_flags --hostname $ctx.host_ip]
-  if ($ctx.ssh_flag | is-not-empty) { $deploy_args = ($deploy_args | append $ctx.ssh_flag) }
-  $deploy_args = ($deploy_args | append $ctx.rest | append $".#($node_name)")
-  ^deploy ...$deploy_args
+  ^deploy ...(build-deploy-args $ctx $".#($node_name)")
 }
 
 export def main [] {

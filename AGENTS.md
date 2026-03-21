@@ -88,7 +88,8 @@ All omnix scripts are written in nushell. No bash.
 **Testing:**
 
 - Test files named `<name>.test.nu` alongside the source
-- Use `use std/assert` for assertions (`assert equal`, `assert str contains`)
+- Use `use std/assert` for assertions (`assert equal`, `assert`, `assert not`)
+- Test string properties via piped assertions: `assert ($val | str contains "sub")`
 - Test functions prefixed with `test ` for auto-discovery
 - Run tests via `nu <name>.test.nu`
 

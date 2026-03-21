@@ -26,7 +26,7 @@ def main [] {
 
   for test_name in $tests {
     print $"  running: ($test_name)"
-    nu -c $"use std/assert; use common.nu *; source common.test.nu; '($test_name)'"
+    nu -c $"use std/assert; use common.nu *; source common.test.nu; ($test_name)"
   }
 
   print $"(ansi green)all ($tests | length) tests passed(ansi reset)"
