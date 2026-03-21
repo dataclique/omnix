@@ -78,6 +78,24 @@
             ;
         };
 
+        nixosConfigurations =
+          let
+            mkExample =
+              configFile:
+              nixpkgs.lib.nixosSystem {
+                system = "x86_64-linux";
+                modules = [
+                  self.nixosModules.default
+                  configFile
+                ];
+              };
+          in
+          {
+            example-minimal = mkExample ./examples/minimal/os.nix;
+            example-single-service = mkExample ./examples/single-service/os.nix;
+            example-full = mkExample ./examples/full/os.nix;
+          };
+
         templates = {
           do-service = {
             path = ./templates/do-service;
@@ -103,15 +121,17 @@
             src = self;
           };
 
+          checks.examples = pkgs.runCommand "validate-examples" { nativeBuildInputs = [ pkgs.nushell ]; } ''
+            cd ${self}
+            nu scripts/validate-examples.nu examples
+            touch $out
+          '';
+
           formatter = pkgs.nixfmt;
 
           devShells.default = pkgs.mkShell {
             inherit (self.checks.${system}.git-hooks) shellHook;
-            packages = [
-              pkgs.nixfmt
-              pkgs.deadnix
-              pkgs.taplo
-            ];
+            packages = self.checks.${system}.git-hooks.enabledPackages;
           };
         };
     };

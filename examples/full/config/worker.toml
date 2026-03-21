@@ -1,0 +1,3 @@
+# Placeholder config for the example worker service.
+[worker]
+concurrency = 4

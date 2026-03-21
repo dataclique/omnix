@@ -190,5 +190,11 @@ infraPkgs = omnix.lib.mkTerraform {
 The consumer owns its nixpkgs pin and makes omnix follow it -- not the other
 way around.
 
+## Migration Notes
+
+**`lib.mkRemote` removed.** The `remote` SSH wrapper is now part of
+`lib.mkTerraform`'s output. Replace `omnix.lib.mkRemote { ... }` with
+`infraPkgs.remote` (where `infraPkgs = omnix.lib.mkTerraform { ... }`).
+
 See [SPEC.md](./SPEC.md) for design details and [ROADMAP.md](./ROADMAP.md) for
 planned work.
