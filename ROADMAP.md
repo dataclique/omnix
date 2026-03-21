@@ -1,8 +1,6 @@
 # Roadmap
 
-## PR review findings
-
-Findings from the moneymentum integration PR review. All items are fixed.
+<details><summary>PR review findings (all fixed)</summary>
 
 - [x] nixosModules.default should include upstream disko and ragenix modules
 - [x] packages.disko: replace silent null fallback with explicit error
@@ -19,6 +17,8 @@ Findings from the moneymentum integration PR review. All items are fixed.
 - [x] templates terraform.tfvars.example: document encryption workflow
 - [x] templates os.nix: remove unused pkgs argument
 - [x] templates services.nix: use neutral dataDir default
+
+</details>
 
 ## Refactor to idiomatic Nix
 
@@ -129,6 +129,6 @@ Extracted from moneymentum, published as standalone library at
 - [x] Move omnix to its own repo (`data-cartel/omnix`)
 - [x] Wire moneymentum as first consumer
 - [x] All 6 NixOS modules implemented with typed option interfaces
-- [x] All 4 lib functions (mkTerraform, mkDeploy, mkBootstrap, mkRemote)
+- [x] All 4 lib functions (mkTerraform, mkDeploy, mkBootstrap, mkGitHooks)
       implemented
 - [x] Flake template (`do-service`) scaffolds complete projects

@@ -6,7 +6,6 @@ on:
   pull_request:
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -15,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/nix-installer-action@v17
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
       - run: nix flake check
 
   build:
@@ -24,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/nix-installer-action@v17
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
       - run: nix build
 
   deploy:
@@ -33,13 +32,16 @@ jobs:
     needs: [check, build]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     concurrency:
       group: deploy
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/nix-installer-action@v17
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup SSH
         run: |
@@ -49,8 +51,10 @@ jobs:
 
           HOST_IP=$(nix run .#resolveIp 2>/dev/null || echo "")
           if [ -n "$HOST_IP" ]; then
-            HOST_KEY=$(nix eval --raw --file keys.nix keys.host)
-            echo "$HOST_IP $HOST_KEY" >> ~/.ssh/known_hosts
+            HOST_KEY=$(nix eval --raw --file keys.nix keys.host 2>/dev/null || echo "")
+            if [ -n "$HOST_KEY" ]; then
+              echo "$HOST_IP $HOST_KEY" >> ~/.ssh/known_hosts
+            fi
           fi
 
       - name: Deploy
