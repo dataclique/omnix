@@ -49,7 +49,7 @@ in
       (toString keysFile)
     ]
     ++ (
-      if secretsRules != null then
+      if secretsRules != null && ragenixPkg != null then
         [
           "--secrets-rules"
           (toString secretsRules)

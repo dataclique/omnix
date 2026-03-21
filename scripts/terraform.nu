@@ -34,7 +34,8 @@ def with-tf-state [keys_file: string, args: list<string>, action: closure] {
 
 # Initialize terraform.
 export def "main init" [keys_file: string, ...args: string] {
-  with-tf-vars $keys_file $args {|rest| ^terraform -chdir=infra init ...$rest }
+  let parsed = (parse-identity ...$args)
+  ^terraform -chdir=infra init ...$parsed.rest
 }
 
 # Plan terraform changes.
@@ -78,10 +79,11 @@ export def "main edit-vars" [keys_file: string, ...args: string] {
       decrypt-vars $parsed.identity
     } else {
       cp $vars_example $vars_file
+      ^chmod 600 $vars_file
     }
 
-    let editor = ($env | get -i EDITOR | default "vi")
-    ^$editor $vars_file
+    let editor_args = ($env | get -i EDITOR | default "vi" | split words)
+    ^($editor_args | first) ...($editor_args | skip 1) $vars_file
     encrypt-vars $keys_file
   } catch { |e|
     rm -f $vars_file
