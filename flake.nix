@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts.url = "github:hercules-ci/flake-parts";
 
     ragenix.url = "github:yaxitech/ragenix";
     ragenix.inputs.nixpkgs.follows = "nixpkgs";
@@ -22,10 +22,10 @@
   };
 
   outputs =
-    {
+    inputs@{
       self,
       nixpkgs,
-      flake-utils,
+      flake-parts,
       ragenix,
       deploy-rs,
       disko,
@@ -33,77 +33,86 @@
       git-hooks,
       ...
     }:
-    {
-      nixosModules = {
-        disko = import ./modules/disko.nix;
-        digitalocean = import ./modules/digitalocean.nix;
-        base = import ./modules/base.nix;
-        storage = import ./modules/storage.nix;
-        services = import ./modules/services.nix;
-        firewall = import ./modules/firewall.nix;
-        staticSites = import ./modules/static-sites.nix;
-        acme = import ./modules/acme.nix;
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
 
-        # Convenience: all modules at once (includes upstream disko + ragenix)
-        default = {
-          imports = [
-            disko.nixosModules.disko
-            ragenix.nixosModules.default
-            self.nixosModules.disko
-            self.nixosModules.digitalocean
-            self.nixosModules.base
-            self.nixosModules.storage
-            self.nixosModules.services
-            self.nixosModules.staticSites
-            self.nixosModules.firewall
-            self.nixosModules.acme
-          ];
+      flake = {
+        nixosModules = {
+          disko = import ./modules/disko.nix;
+          digitalocean = import ./modules/digitalocean.nix;
+          base = import ./modules/base.nix;
+          storage = import ./modules/storage.nix;
+          services = import ./modules/services.nix;
+          firewall = import ./modules/firewall.nix;
+          staticSites = import ./modules/static-sites.nix;
+          acme = import ./modules/acme.nix;
+
+          # Convenience: all modules at once (includes upstream disko + ragenix)
+          default = {
+            imports = [
+              disko.nixosModules.disko
+              ragenix.nixosModules.default
+              self.nixosModules.disko
+              self.nixosModules.digitalocean
+              self.nixosModules.base
+              self.nixosModules.storage
+              self.nixosModules.services
+              self.nixosModules.staticSites
+              self.nixosModules.firewall
+              self.nixosModules.acme
+            ];
+          };
+        };
+
+        lib = import ./lib {
+          inherit
+            nixpkgs
+            deploy-rs
+            nixos-anywhere
+            git-hooks
+            ;
+        };
+
+        templates = {
+          do-service = {
+            path = ./templates/do-service;
+            description = "DigitalOcean service with deploy-rs, terraform, and age secrets";
+          };
+          default = self.templates.do-service;
         };
       };
 
-      lib = import ./lib {
-        inherit
-          nixpkgs
-          deploy-rs
-          nixos-anywhere
-          git-hooks
-          ;
-      };
+      perSystem =
+        { pkgs, system, ... }:
+        let
+          hooks = self.lib.mkGitHooks { };
+        in
+        {
+          packages = {
+            disko = disko.packages.${system}.default or (throw "disko package not available for ${system}");
+            ragenix = ragenix.packages.${system}.default;
+          };
 
-      templates = {
-        do-service = {
-          path = ./templates/do-service;
-          description = "DigitalOcean service with deploy-rs, terraform, and age secrets";
+          checks.git-hooks = git-hooks.lib.${system}.run {
+            inherit hooks;
+            src = self;
+          };
+
+          formatter = pkgs.nixfmt;
+
+          devShells.default = pkgs.mkShell {
+            inherit (self.checks.${system}.git-hooks) shellHook;
+            packages = [
+              pkgs.nixfmt
+              pkgs.deadnix
+              pkgs.taplo
+            ];
+          };
         };
-        default = self.templates.do-service;
-      };
-    }
-    // flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        hooks = self.lib.mkGitHooks { };
-      in
-      {
-        packages.disko =
-          disko.packages.${system}.default or (throw "disko package not available for ${system}");
-        packages.ragenix = ragenix.packages.${system}.default;
-
-        checks.git-hooks = git-hooks.lib.${system}.run {
-          inherit hooks;
-          src = self;
-        };
-
-        formatter = pkgs.nixfmt;
-
-        devShells.default = pkgs.mkShell {
-          inherit (self.checks.${system}.git-hooks) shellHook;
-          packages = [
-            pkgs.nixfmt
-            pkgs.deadnix
-            pkgs.taplo
-          ];
-        };
-      }
-    );
+    };
 }
