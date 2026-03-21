@@ -7,138 +7,91 @@
 }:
 
 let
-  shell = import ./shell.nix { inherit keysFile; };
-  inherit (shell)
-    tfState
-    tfVars
-    parseIdentity
-    decryptState
-    encryptState
-    decryptVars
-    encryptVars
-    resolveIp
-    ;
+  scriptsDir = ../scripts;
+  shell = import ./shell.nix { inherit pkgs scriptsDir; };
+  inherit (shell) mkNuScript;
 
-  buildInputs = [
+  runtimeInputs = [
     pkgs.terraform
     pkgs.rage
     pkgs.jq
   ]
   ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
 
-  tfPlanFile = "infra/tfplan";
-
-  cleanup = "rm -f ${tfState} ${tfState}.backup ${tfVars}";
-  cleanupWithPlan = "${cleanup} ${tfPlanFile}";
-
-  preamble = ''
-    ${parseIdentity}
-    on_exit() { ${cleanup}; }
-    trap on_exit EXIT
-    ${decryptVars}
-  '';
-
-  preambleWithEncrypt = ''
-    ${parseIdentity}
-    on_exit() {
-      ${encryptState}
-      ${cleanupWithPlan}
-    }
-    trap on_exit EXIT
-    ${decryptVars}
-  '';
-
-  rekeyPreamble = ''
-    ${parseIdentity}
-    on_exit() {
-      ${encryptState}
-      ${cleanup}
-    }
-    trap on_exit EXIT
-    ${decryptState}
-    ${encryptState}
-    ${decryptVars}
-    ${encryptVars}
-  '';
-
-  mkTask =
-    name: body:
-    pkgs.writeShellApplication {
-      inherit name;
-      runtimeInputs = buildInputs;
-      text = body;
+  mkTfTask =
+    name: subcommand:
+    mkNuScript {
+      inherit name subcommand runtimeInputs;
+      script = "terraform.nu";
+      extraArgs = [ (toString keysFile) ];
     };
 
 in
 {
-  inherit buildInputs parseIdentity resolveIp;
+  inherit runtimeInputs;
 
-  tfInit = mkTask "tf-init" ''
-    ${preamble}
-    terraform -chdir=infra init "$@"
-  '';
+  tfInit = mkTfTask "tf-init" "init";
+  tfPlan = mkTfTask "tf-plan" "plan";
+  tfApply = mkTfTask "tf-apply" "apply";
+  tfDestroy = mkTfTask "tf-destroy" "destroy";
+  tfImport = mkTfTask "tf-import" "import";
+  tfEditVars = mkTfTask "tf-edit-vars" "edit-vars";
 
-  tfPlan = mkTask "tf-plan" ''
-    ${preamble}
-    ${decryptState}
-    terraform -chdir=infra plan -out=tfplan "$@"
-  '';
-
-  tfApply = mkTask "tf-apply" ''
-    ${preambleWithEncrypt}
-    ${decryptState}
-    terraform -chdir=infra apply "$@" tfplan
-  '';
-
-  tfDestroy = mkTask "tf-destroy" ''
-    ${preambleWithEncrypt}
-    ${decryptState}
-    terraform -chdir=infra destroy "$@"
-  '';
-
-  tfImport = mkTask "tf-import" ''
-    ${preambleWithEncrypt}
-    ${decryptState}
-    terraform -chdir=infra import "$@"
-  '';
-
-  tfEditVars = mkTask "tf-edit-vars" ''
-    ${parseIdentity}
-    on_exit() { rm -f ${tfVars}; }
-    trap on_exit EXIT
-
-    if [ -f ${tfVars}.age ]; then
-      ${decryptVars}
-    else
-      cp ${tfVars}.example ${tfVars}
-    fi
-    ''${EDITOR:-vi} ${tfVars}
-    ${encryptVars}
-  '';
-
-  tfRekey = mkTask "tf-rekey" ''
-    ${rekeyPreamble}
-  '';
+  tfRekey = mkNuScript {
+    name = "tf-rekey";
+    script = "terraform.nu";
+    subcommand = "rekey";
+    inherit runtimeInputs;
+    extraArgs = [
+      (toString keysFile)
+    ]
+    ++ (
+      if secretsRules != null then
+        [
+          "--secrets-rules"
+          (toString secretsRules)
+        ]
+      else
+        [ ]
+    );
+  };
 
   rekey =
     if ragenixPkg != null && secretsRules != null then
-      mkTask "rekey" ''
-        ${rekeyPreamble}
-        ragenix --rules ${secretsRules} -i "$identity" -r
-      ''
+      mkNuScript {
+        name = "rekey";
+        script = "terraform.nu";
+        subcommand = "rekey";
+        inherit runtimeInputs;
+        extraArgs = [
+          (toString keysFile)
+          "--secrets-rules"
+          (toString secretsRules)
+        ];
+      }
     else
       null;
 
-  remote = pkgs.writeShellApplication {
+  remote = mkNuScript {
     name = "remote";
+    script = "terraform.nu";
+    subcommand = "remote";
     runtimeInputs = [
       pkgs.rage
       pkgs.jq
       pkgs.openssh
     ];
-    text = ''
-      ${resolveIp}
-      exec ssh -i "$identity" "root@$host_ip" "$@"
-    '';
+    extraArgs = [ (toString keysFile) ];
+  };
+
+  resolveIp = mkNuScript {
+    name = "resolve-ip";
+    script = "terraform.nu";
+    subcommand = "resolve-ip";
+    runtimeInputs = [
+      pkgs.rage
+      pkgs.jq
+    ];
+    extraArgs = [ (toString keysFile) ];
   };
 }
