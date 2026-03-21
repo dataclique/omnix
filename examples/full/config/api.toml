@@ -1,0 +1,3 @@
+# Placeholder config for the example API service.
+[server]
+port = 8000

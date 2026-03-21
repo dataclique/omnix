@@ -78,6 +78,24 @@
             ;
         };
 
+        nixosConfigurations =
+          let
+            mkExample =
+              configFile:
+              nixpkgs.lib.nixosSystem {
+                system = "x86_64-linux";
+                modules = [
+                  self.nixosModules.default
+                  configFile
+                ];
+              };
+          in
+          {
+            example-minimal = mkExample ./examples/minimal/os.nix;
+            example-single-service = mkExample ./examples/single-service/os.nix;
+            example-full = mkExample ./examples/full/os.nix;
+          };
+
         templates = {
           do-service = {
             path = ./templates/do-service;
