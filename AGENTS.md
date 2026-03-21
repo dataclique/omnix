@@ -53,9 +53,50 @@ nixfmt **/*.nix
 
 - Functions take an attrset of required parameters
 - Return an attrset of derivations or values
-- Use `pkgs.writeShellApplication` for shell scripts (not raw `writeScript`)
+- Scripts are written in nushell, not bash (see Nushell section below)
 - Include `runtimeInputs` -- never assume tools are on PATH
-- All shell scripts must use `set -eo pipefail`
+
+### Nushell
+
+All omnix scripts are written in nushell. No bash.
+
+**Naming:**
+
+- Commands: kebab-case (`resolve-ip`, `decrypt-state`)
+- Sub-commands: space-separated kebab-case (`tf apply`, `tf plan`)
+- Variables and parameters: snake_case (`host_ip`, `key_file`)
+- Flags: kebab-case definition (`--identity (-i)`), snake_case access
+  (`$identity`)
+- Environment variables: SCREAMING_SNAKE_CASE
+
+**Types and safety:**
+
+- Always type parameters explicitly (`param: string`, not bare `param`)
+- Use immutable `let` bindings by default, `mut` only when necessary
+- Return values implicitly (last expression) -- no `echo` or explicit `return`
+- Use structured data (records, tables) over string parsing
+- Use `error make { msg: "..." }` for explicit errors
+- Use `try { } catch { |e| }` for error handling
+
+**Script structure:**
+
+- Use the `main` command pattern for script entry points
+- Export public API with `export def`, keep helpers as plain `def`
+- Keep ≤ 2 positional parameters; use named flags for the rest
+- Provide both long and short flag forms (`--identity (-i)`)
+
+**Testing:**
+
+- Test files named `<name>.test.nu` alongside the source
+- Use `use std/assert` for assertions (`assert equal`, `assert str contains`)
+- Test functions prefixed with `test ` for auto-discovery
+- Run tests via `nu <name>.test.nu`
+
+**Nix integration:**
+
+- Scripts are nushell files in `scripts/` directory
+- Wrapped via nix derivations with nushell + runtimeInputs on PATH
+- External commands use caret prefix (`^rage`, `^jq`, `^terraform`)
 
 ### Testing
 

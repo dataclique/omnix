@@ -3,7 +3,8 @@
 Composable Nix infrastructure for DigitalOcean deployments. Provides NixOS
 modules, library functions, and flake templates for provisioning, deploying, and
 managing services on DigitalOcean with terraform, deploy-rs, and age-encrypted
-secrets.
+secrets. Built with [flake-parts](https://flake.parts/) and
+[nushell](https://www.nushell.sh/) scripts.
 
 ## Quick Start
 
