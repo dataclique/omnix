@@ -5,6 +5,7 @@
   nodeName,
   services,
   package,
+  staticSites ? { },
   nixosConfig ? null,
   targetSystem ? "x86_64-linux",
 }:
@@ -14,7 +15,10 @@ let
   inherit (deploy-rs.lib.${system}) activate;
   profileBase = "/nix/var/nix/profiles/per-service";
 
+  siteBase = "/var/lib/sites";
+
   enabledServices = builtins.filter (name: services.${name}.enabled) (builtins.attrNames services);
+  enabledSites = builtins.filter (name: staticSites.${name}.enabled) (builtins.attrNames staticSites);
 
   mkServiceProfile =
     name:
@@ -36,6 +40,16 @@ let
     profilePath = "${profileBase}/${name}";
   };
 
+  mkSiteProfile =
+    name: sitePackage:
+    activate.custom sitePackage (
+      builtins.concatStringsSep " && " [
+        "mkdir -p ${siteBase}"
+        "ln -sfn ${sitePackage} ${siteBase}/${name}"
+        "systemctl reload nginx || systemctl restart nginx"
+      ]
+    );
+
 in
 {
   config = {
@@ -44,7 +58,7 @@ in
       sshUser = "root";
       user = "root";
 
-      profilesOrder = [ "system" ] ++ enabledServices;
+      profilesOrder = [ "system" ] ++ enabledServices ++ enabledSites;
 
       profiles = {
         system.path =
@@ -58,6 +72,15 @@ in
           inherit name;
           value = mkProfile name;
         }) enabledServices
+      )
+      // builtins.listToAttrs (
+        map (name: {
+          inherit name;
+          value = {
+            path = mkSiteProfile name staticSites.${name}.package;
+            profilePath = "${profileBase}/${name}";
+          };
+        }) enabledSites
       );
     };
   };
