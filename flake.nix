@@ -41,6 +41,7 @@
         storage = import ./modules/storage.nix;
         services = import ./modules/services.nix;
         firewall = import ./modules/firewall.nix;
+        staticSites = import ./modules/static-sites.nix;
         acme = import ./modules/acme.nix;
 
         # Convenience: all modules at once (includes upstream disko + ragenix)
@@ -53,6 +54,7 @@
             self.nixosModules.base
             self.nixosModules.storage
             self.nixosModules.services
+            self.nixosModules.staticSites
             self.nixosModules.firewall
             self.nixosModules.acme
           ];

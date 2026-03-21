@@ -8,7 +8,7 @@ in
   omnix.digitalocean.enable = true;
   omnix.base = {
     enable = true;
-    stateVersion = "24.11";
+    stateVersion = "25.11";
     sshKeys = roles.ssh;
   };
   omnix.storage = {
