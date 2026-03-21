@@ -98,6 +98,14 @@ All omnix scripts are written in nushell. No bash.
 - Scripts are nushell files in `scripts/` directory
 - Wrapped via nix derivations with nushell + runtimeInputs on PATH
 - External commands use caret prefix (`^rage`, `^jq`, `^terraform`)
+- Build argument vectors as lists and splat them to avoid string-concatenation
+  bugs:
+  ```nu
+  let argv = ["arg1" "--flag" $value]
+  ^cmd ...$argv
+  ```
+  Never join flags into a single string -- each flag must be a separate list
+  element so splatting passes them as distinct arguments.
 
 ### Testing
 

@@ -9,7 +9,10 @@ const TF_PLAN = "infra/tfplan"
 export def parse-identity [
   ...args: string
 ]: nothing -> record<identity: string, rest: list<string>> {
-  if ($args | length) >= 2 and ($args.0 == "-i") {
+  if ($args | length) >= 1 and ($args.0 == "-i" or $args.0 == "--identity") {
+    if ($args | length) < 2 {
+      error make { msg: $"($args.0) requires a value (e.g. ($args.0) ~/.ssh/id_ed25519)" }
+    }
     { identity: $args.1, rest: ($args | skip 2) }
   } else {
     { identity: ($env.HOME | path join ".ssh" "id_ed25519"), rest: $args }
@@ -48,8 +51,12 @@ export def decrypt-vars [identity: string] {
 
 # Encrypt terraform variables to age-encrypted file using keys.nix roles.
 export def encrypt-vars [keys_file: string] {
+  if not ($TF_VARS | path exists) { return }
   let recipients = (^nix eval --raw --file $keys_file roles.infra
     --apply 'builtins.concatStringsSep "\n"')
+  if ($recipients | is-empty) {
+    error make { msg: "no recipients found in keys.nix roles.infra — cannot encrypt vars" }
+  }
   $recipients | ^rage -e -R /dev/stdin -o $"($TF_VARS).age" $TF_VARS
 }
 
@@ -63,8 +70,14 @@ export def resolve-ip [
   let parsed = (parse-identity ...$args)
   decrypt-state $parsed.identity
 
-  let host_ip = (open $TF_STATE | get $output_key)
-  rm -f $TF_STATE
+  let host_ip = try {
+    let val = (open $TF_STATE | get $output_key)
+    rm -f $TF_STATE
+    $val
+  } catch { |e|
+    rm -f $TF_STATE
+    error make { msg: $e.msg }
+  }
 
   if ($host_ip | is-empty) {
     error make { msg: "failed to resolve droplet IP from terraform state" }

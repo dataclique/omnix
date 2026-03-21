@@ -7,21 +7,20 @@ def deploy-preamble [
   keys_file: string
   local_system: string
   ...args: string
-]: nothing -> record<identity: string, host_ip: string, ssh_flag: string, deploy_flags: string, rest: list<string>> {
+]: nothing -> record<identity: string, host_ip: string, ssh_flag: string, deploy_flags: list<string>, rest: list<string>> {
   let resolved = (resolve-ip $keys_file ...$args)
 
   let default_identity = ($env.HOME | path join ".ssh" "id_ed25519")
   let ssh_flag = if $resolved.identity != $default_identity {
-    $env.NIX_SSHOPTS = $"-i ($resolved.identity)"
     $"--ssh-opts=-i ($resolved.identity)"
   } else {
     ""
   }
 
   let deploy_flags = if $local_system == "x86_64-linux" {
-    "--skip-checks"
+    ["--skip-checks"]
   } else {
-    "--remote-build --skip-checks"
+    ["--remote-build" "--skip-checks"]
   }
 
   {
@@ -37,7 +36,7 @@ def build-deploy-args [
   ctx: record
   target: string
 ]: nothing -> list<string> {
-  mut args = [$ctx.deploy_flags --hostname $ctx.host_ip]
+  mut args = ($ctx.deploy_flags ++ [--hostname $ctx.host_ip])
   if ($ctx.ssh_flag | is-not-empty) { $args = ($args | append $ctx.ssh_flag) }
   $args | append $ctx.rest | append $target
 }
@@ -50,6 +49,7 @@ export def "main nixos" [
   ...args: string
 ] {
   let ctx = (deploy-preamble $keys_file $local_system ...$args)
+  if ($ctx.ssh_flag | is-not-empty) { $env.NIX_SSHOPTS = $"-i ($ctx.identity)" }
   ^deploy ...(build-deploy-args $ctx $".#($node_name).system")
 }
 
@@ -62,6 +62,7 @@ export def "main service" [
   ...args: string
 ] {
   let ctx = (deploy-preamble $keys_file $local_system ...$args)
+  if ($ctx.ssh_flag | is-not-empty) { $env.NIX_SSHOPTS = $"-i ($ctx.identity)" }
   ^deploy ...(build-deploy-args $ctx $".#($node_name).($profile)")
 }
 
@@ -74,6 +75,7 @@ export def "main all" [
   ...args: string
 ] {
   let ctx = (deploy-preamble $keys_file $local_system ...$args)
+  if ($ctx.ssh_flag | is-not-empty) { $env.NIX_SSHOPTS = $"-i ($ctx.identity)" }
 
   if ($service_cleanup != null) and ($service_cleanup | is-not-empty) {
     ^ssh -i $ctx.identity $"root@($ctx.host_ip)" $service_cleanup

@@ -29,10 +29,10 @@ def extract-host-key [identity: string, host_ip: string]: nothing -> string {
   $"($parts.0) ($parts.1)"
 }
 
-def update-keys-nix [keys_file: string, new_key: string] {
+export def update-keys-nix [keys_file: string, new_key: string] {
   let content = (open $keys_file --raw)
   let updated = ($content
-    | str replace --regex 'host =\n      "ssh-ed25519 [^"]*"' $'host =\n      "($new_key)"')
+    | str replace --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' $'host = "($new_key)"')
 
   if not ($updated | str contains $new_key) {
     error make { msg: "host key replacement in keys.nix failed" }

@@ -25,8 +25,10 @@ for type safety, structured data, testability, and composability.
 
 - [x] scripts/common.test.nu -- parse-identity tests
 - [ ] scripts/terraform.test.nu -- unit tests for pure helpers
-- [ ] scripts/deploy.test.nu -- unit tests for build-deploy-args
-- [ ] scripts/bootstrap.test.nu -- unit tests for update-keys-nix
+- [ ] scripts/deploy.test.nu -- deploy passes separate remote-build/skip-checks
+      flags on non-x86_64 (behavior invariant tests)
+- [ ] scripts/bootstrap.test.nu -- bootstrap rewrites host key in template-style
+      keys.nix (behavior invariant tests)
 
 ## Refactor to idiomatic Nix
 
