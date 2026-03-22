@@ -78,8 +78,6 @@ in
       // siteCfg.extraLocations;
     }) enabledSites;
 
-    systemd.tmpfiles.rules = map (name: "d ${siteBase}/${name} 0755 root root -") (
-      builtins.attrNames enabledSites
-    );
+    systemd.tmpfiles.rules = [ "d ${siteBase} 0755 root root -" ];
   };
 }

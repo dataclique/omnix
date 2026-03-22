@@ -38,18 +38,28 @@ def extract-host-key [identity: string, host_ip: string]: nothing -> string {
   $"($parts.0) ($parts.1)"
 }
 
-export def update-keys-nix [keys_file: string, new_key: string] {
+export def update-keys-nix [keys_file: string, config_name: string, new_key: string] {
   let content = (open $keys_file --raw)
-  let updated = ($content
-    | str replace --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' $'host = "($new_key)"')
-
   let expected = $'host = "($new_key)"'
+
+  # Scope replacement to the stanza matching config_name when present,
+  # otherwise fall back to replacing the first host occurrence (flat keys.nix).
+  let updated = if ($content | str contains $config_name) {
+    let idx = ($content | str index-of $config_name)
+    let before = ($content | str substring 0..$idx)
+    let after = ($content | str substring $idx..
+      | str replace --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' $'host = "($new_key)"')
+    $"($before)($after)"
+  } else {
+    $content | str replace --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' $'host = "($new_key)"'
+  }
+
   if not ($updated | str contains $expected) {
-    error make { msg: "host key replacement in keys.nix failed" }
+    error make { msg: $"host key replacement in keys.nix failed for ($config_name)" }
   }
 
   $updated | save -f $keys_file
-  print $"Updated host key in ($keys_file)"
+  print $"Updated host key in ($keys_file) for ($config_name)"
 }
 
 export def main [
@@ -68,7 +78,7 @@ export def main [
   wait-for-ssh $resolved.identity $resolved.host_ip
 
   let new_key = (extract-host-key $resolved.identity $resolved.host_ip)
-  update-keys-nix $keys_file $new_key
+  update-keys-nix $keys_file $config_name $new_key
 
   if ($secrets_rules != null) {
     print "Rekeying secrets..."

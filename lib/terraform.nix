@@ -15,6 +15,8 @@ let
     pkgs.terraform
     pkgs.rage
     pkgs.jq
+    pkgs.coreutils
+    pkgs.vim
   ]
   ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
 

@@ -127,9 +127,18 @@
             touch $out
           '';
 
+          checks.template-do-service = pkgs.runCommand "validate-template-do-service" { nativeBuildInputs = [ pkgs.nushell ]; } ''
+            cd ${self}
+            nu scripts/validate-examples.nu templates/do-service
+            touch $out
+          '';
+        }
+        // (pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
           checks.example-minimal = self.nixosConfigurations.example-minimal.config.system.build.toplevel;
           checks.example-single-service = self.nixosConfigurations.example-single-service.config.system.build.toplevel;
           checks.example-full = self.nixosConfigurations.example-full.config.system.build.toplevel;
+        })
+        // {
 
           formatter = pkgs.nixfmt;
 

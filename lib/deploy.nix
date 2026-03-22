@@ -81,7 +81,7 @@ in
           name = "site:${name}";
           value = {
             path = mkSiteProfile name staticSites.${name}.package;
-            profilePath = "${profileBase}/${name}";
+            profilePath = "${profileBase}/site-${name}";
           };
         }) enabledSites
       );
