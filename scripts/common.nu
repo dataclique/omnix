@@ -71,7 +71,7 @@ export def resolve-ip [
   decrypt-state $parsed.identity
 
   let host_ip = try {
-    let val = (open $TF_STATE | get $output_key)
+    let val = (open $TF_STATE --raw | from json | get $output_key)
     rm -f $TF_STATE
     $val
   } catch { |e|

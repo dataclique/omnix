@@ -127,6 +127,10 @@
             touch $out
           '';
 
+          checks.example-minimal = self.nixosConfigurations.example-minimal.config.system.build.toplevel;
+          checks.example-single-service = self.nixosConfigurations.example-single-service.config.system.build.toplevel;
+          checks.example-full = self.nixosConfigurations.example-full.config.system.build.toplevel;
+
           formatter = pkgs.nixfmt;
 
           devShells.default = pkgs.mkShell {

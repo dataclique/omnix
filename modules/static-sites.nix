@@ -10,9 +10,18 @@ let
   enabledSites = lib.filterAttrs (_: v: v.enabled) cfg.definitions;
 
   siteBase = "/var/lib/sites";
+
+  defaultSites = lib.filterAttrs (_: v: v.isDefault) enabledSites;
+  defaultCount = builtins.length (builtins.attrNames defaultSites);
 in
 {
   options.omnix.staticSites = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable the staticSites module";
+    };
+
     definitions = lib.mkOption {
       type = lib.types.attrsOf (
         lib.types.submodule {
@@ -44,8 +53,15 @@ in
     };
   };
 
-  config = lib.mkIf (enabledSites != { }) {
-    services.nginx.enable = true;
+  config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = defaultCount <= 1;
+        message = "omnix.staticSites: at most one site may have isDefault = true, but ${toString defaultCount} are configured: ${builtins.concatStringsSep ", " (builtins.attrNames defaultSites)}";
+      }
+    ];
+
+    services.nginx.enable = lib.mkIf (enabledSites != { }) true;
 
     services.nginx.virtualHosts = lib.mapAttrs (name: siteCfg: {
       default = siteCfg.isDefault;

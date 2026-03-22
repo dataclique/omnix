@@ -40,3 +40,24 @@
 - `lib.mkRemote` (redundant with `mkTerraform`'s `remote` output)
 - `lib/remote.nix`
 - `flake-utils` dependency (replaced by flake-parts)
+
+### Breaking changes / Migration
+
+- **`lib.mkRemote` removed**: Consumers calling `lib.mkRemote` must switch to
+  the `remote` output of `mkTerraform`. Replace `omnix.lib.mkRemote { ... }`
+  with the `remote` attribute returned by `omnix.lib.mkTerraform { ... }`.
+
+- **Bash/age helper exports removed** (`parseIdentity`, `resolveIp`,
+  `decryptState`): `lib/shell.nix` no longer exports these bash functions.
+  Impact: any scripts or packages that referenced
+  `omnix.lib.parseIdentity`, `omnix.lib.resolveIp`, or
+  `omnix.lib.decryptState` will fail to evaluate. Replacement: use
+  `mkNuScript` from the rewritten `lib/shell.nix` to wrap nushell scripts
+  that call the equivalent nushell helpers in `scripts/common.nu`, or port
+  existing bash helpers to nushell.
+
+- **`flake-utils` replaced by `flake-parts`**: Consumers that override or
+  extend the omnix flake via `flake-utils.lib.eachDefaultSystem` must migrate
+  to `flake-parts.lib.mkFlake` and `perSystem`. Update your `flake.nix`
+  inputs to replace `flake-utils` with `flake-parts` and restructure outputs
+  using `perSystem` modules.
