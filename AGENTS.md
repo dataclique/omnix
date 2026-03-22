@@ -90,7 +90,7 @@ All omnix scripts are written in nushell. No bash.
 - Test files named `<name>.test.nu` alongside the source
 - Use `use std/assert` for assertions (`assert equal`, `assert`, `assert not`)
 - Test string properties via piped assertions: `assert ($val | str contains "sub")`
-- Test functions prefixed with `test ` for auto-discovery
+- Test functions prefixed with `test` for auto-discovery
 - Run tests via `nu <name>.test.nu`
 
 **Nix integration:**
@@ -100,12 +100,52 @@ All omnix scripts are written in nushell. No bash.
 - External commands use caret prefix (`^rage`, `^jq`, `^terraform`)
 - Build argument vectors as lists and splat them to avoid string-concatenation
   bugs:
+
   ```nu
   let argv = ["arg1" "--flag" $value]
   ^cmd ...$argv
   ```
+
   Never join flags into a single string -- each flag must be a separate list
   element so splatting passes them as distinct arguments.
+
+### Agent implementations & responsibilities
+
+**bootstrap** (`scripts/bootstrap.nu`)
+- Responsibilities: provision a DigitalOcean droplet via nixos-anywhere, update host keys, optionally rekey secrets
+- Public interface: `main` entrypoint — `nu bootstrap.nu <keys_file> <config_name> [--secrets-rules <path>] [...args]`
+- Inputs: `keys_file` (path to `keys.nix`), `config_name` (NixOS flake config), optional `--secrets-rules`, passthrough args (`-i <identity>`)
+- Outputs: updated `keys.nix` with new host key; rekeyed secrets if `--secrets-rules` provided
+- Failure modes: SSH timeout (60 retries × 5 s), empty/malformed host key, key replacement failure — all surface explicit `error make` messages
+- Testing: manual integration test via the GitHub Actions lifecycle workflow
+- Dependencies: `nixos-anywhere`, `ssh`, `ragenix` (optional); calls `common.nu` helpers
+
+**terraform** (`scripts/terraform.nu`)
+- Responsibilities: wrap terraform commands with age-encrypted state/vars management
+- Public interface: subcommands — `init`, `plan`, `apply`, `destroy`, `import`, `edit-vars`, `rekey`, `remote`, `resolve-ip`
+- Inputs: `keys_file` (path to `keys.nix`), optional `-i <identity>`, optional `--secrets-rules` (rekey only), passthrough terraform args
+- Outputs: encrypted state/vars files, terraform plan artifacts, SSH sessions (remote)
+- Failure modes: missing recipients in `keys.nix`, terraform errors — state re-encrypted before surfacing errors; edit-vars preserves a `.recover` file on encryption failure
+- Testing: integration test workflow (terraform → bootstrap → deploy → verify → teardown)
+- Dependencies: `terraform`, `rage`, `jq`, `openssh`, `ragenix` (optional); calls `common.nu` helpers
+
+**common** (`scripts/common.nu`)
+- Responsibilities: shared helpers — identity parsing, state/vars encryption/decryption, IP resolution, cleanup
+- Public interface: exported functions — `parse-identity`, `decrypt-state`, `encrypt-state`, `decrypt-vars`, `encrypt-vars`, `resolve-ip`, `cleanup`, `cleanup-with-plan`
+- Inputs: identity file path, keys file, terraform state/vars files in `infra/`
+- Outputs: decrypted/encrypted files, `record<identity, host_ip, rest>` from `resolve-ip`
+- Failure modes: missing recipients, empty IP — explicit `error make` messages
+- Testing: evaluated indirectly through terraform and bootstrap tests
+- Dependencies: `rage`, `jq`, `nix` (for `nix eval`)
+
+**deploy** (`scripts/deploy.nu`, wrapped by `lib/deploy.nix`)
+- Responsibilities: orchestrate deploy-rs deployments for NixOS system, individual services, and static sites
+- Public interface: subcommands — `nixos`, `service`, `all`
+- Inputs: `keys_file`, `nodeName`, `localSystem`, optional `--service-cleanup`
+- Outputs: deploy-rs activation on remote host
+- Failure modes: deploy-rs activation failures, SSH errors
+- Testing: integration test workflow deploy step
+- Dependencies: `deploy-rs`, `rage`, `jq`, `openssh`; calls `common.nu` helpers
 
 ### Testing
 

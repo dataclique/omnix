@@ -49,7 +49,7 @@ export def "main plan" [keys_file: string, ...args: string] {
     cleanup-with-plan
     error make { msg: $e.msg }
   }
-  cleanup-with-plan
+  cleanup
 }
 
 # Apply terraform changes (re-encrypts state after).
@@ -86,7 +86,12 @@ export def "main edit-vars" [keys_file: string, ...args: string] {
     ^($editor_args | first) ...($editor_args | skip 1) $vars_file
     encrypt-vars $keys_file
   } catch { |e|
-    rm -f $vars_file
+    let recover = $"($vars_file).recover"
+    if ($vars_file | path exists) {
+      mv $vars_file $recover
+      ^chmod 600 $recover
+      print $"Preserved decrypted vars as ($recover) for recovery"
+    }
     error make { msg: $e.msg }
   }
   rm -f $vars_file

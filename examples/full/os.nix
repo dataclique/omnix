@@ -60,6 +60,7 @@
     enable = true;
     enableHTTP = true;
     enableHTTPS = true;
+    allowedTCPPorts = [ 8080 ];
   };
   omnix.acme = {
     enable = true;

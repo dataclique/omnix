@@ -80,9 +80,11 @@
             tfDestroy
             tfEditVars
             tfRekey
-            rekey
             remote
             ;
+        }
+        // (if infraPkgs.rekey != null then { inherit (infraPkgs) rekey; } else { })
+        // {
 
           bootstrap = omnix.lib.mkBootstrap {
             inherit pkgs system;

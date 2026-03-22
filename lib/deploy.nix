@@ -59,7 +59,9 @@ in
       sshUser = "root";
       user = "root";
 
-      profilesOrder = [ "system" ] ++ enabledServices ++ enabledSites;
+      profilesOrder = [ "system" ]
+        ++ map (name: "service:${name}") enabledServices
+        ++ map (name: "site:${name}") enabledSites;
 
       profiles = {
         system.path =
@@ -70,13 +72,13 @@ in
       }
       // builtins.listToAttrs (
         map (name: {
-          inherit name;
+          name = "service:${name}";
           value = mkProfile name;
         }) enabledServices
       )
       // builtins.listToAttrs (
         map (name: {
-          inherit name;
+          name = "site:${name}";
           value = {
             path = mkSiteProfile name staticSites.${name}.package;
             profilePath = "${profileBase}/${name}";

@@ -19,7 +19,7 @@ let
   ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
 
   mkTfTask =
-    name: subcommand:
+    { name, subcommand }:
     mkNuScript {
       inherit name subcommand runtimeInputs;
       script = "terraform.nu";
@@ -30,12 +30,12 @@ in
 {
   inherit runtimeInputs;
 
-  tfInit = mkTfTask "tf-init" "init";
-  tfPlan = mkTfTask "tf-plan" "plan";
-  tfApply = mkTfTask "tf-apply" "apply";
-  tfDestroy = mkTfTask "tf-destroy" "destroy";
-  tfImport = mkTfTask "tf-import" "import";
-  tfEditVars = mkTfTask "tf-edit-vars" "edit-vars";
+  tfInit = mkTfTask { name = "tf-init"; subcommand = "init"; };
+  tfPlan = mkTfTask { name = "tf-plan"; subcommand = "plan"; };
+  tfApply = mkTfTask { name = "tf-apply"; subcommand = "apply"; };
+  tfDestroy = mkTfTask { name = "tf-destroy"; subcommand = "destroy"; };
+  tfImport = mkTfTask { name = "tf-import"; subcommand = "import"; };
+  tfEditVars = mkTfTask { name = "tf-edit-vars"; subcommand = "edit-vars"; };
 
   # tfRekey is always available (optionally passes --secrets-rules).
   # rekey only exists when ragenixPkg and secretsRules are both provided,

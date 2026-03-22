@@ -24,8 +24,17 @@ def wait-for-ssh [identity: string, host_ip: string] {
 
 def extract-host-key [identity: string, host_ip: string]: nothing -> string {
   let ssh_opts = [-o StrictHostKeyChecking=no -o ConnectTimeout=5 -i $identity]
-  let raw = (^ssh ...$ssh_opts $"root@($host_ip)" cat /etc/ssh/ssh_host_ed25519_key.pub)
+  let raw = (^ssh ...$ssh_opts $"root@($host_ip)" cat /etc/ssh/ssh_host_ed25519_key.pub | str trim)
+
+  if ($raw | is-empty) {
+    error make { msg: $"bootstrap: host key from ($host_ip) is empty" }
+  }
+
   let parts = ($raw | split row " ")
+  if ($parts | length) < 2 {
+    error make { msg: $"bootstrap: host key from ($host_ip) is malformed: ($raw)" }
+  }
+
   $"($parts.0) ($parts.1)"
 }
 
@@ -34,7 +43,8 @@ export def update-keys-nix [keys_file: string, new_key: string] {
   let updated = ($content
     | str replace --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' $'host = "($new_key)"')
 
-  if not ($updated | str contains $new_key) {
+  let expected = $'host = "($new_key)"'
+  if not ($updated | str contains $expected) {
     error make { msg: "host key replacement in keys.nix failed" }
   }
 
