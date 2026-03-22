@@ -58,7 +58,11 @@ nixfmt **/*.nix
 
 ### Nushell
 
-All omnix scripts are written in nushell. No bash.
+All omnix scripts are written in nushell. No bash. Nushell gives us structured
+data, explicit types, and — critically — testable functions that can be unit
+tested directly (`nu <name>.test.nu`) and exercised as nix derivation checks
+via `nix flake check`. New scripts should have a corresponding `.test.nu` file
+and a check entry in `flake.nix`.
 
 **Naming:**
 
