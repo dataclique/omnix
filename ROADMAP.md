@@ -1,24 +1,34 @@
 # Roadmap
 
-## PR review findings
+## Migrate scripts to nushell
 
-Findings from the moneymentum integration PR review. All items are fixed.
+All omnix shell scripts (terraform wrappers, bootstrap, deploy, remote) are
+currently bash embedded in Nix via `writeShellApplication`. Migrate to nushell
+for type safety, structured data, testability, and composability.
 
-- [x] nixosModules.default should include upstream disko and ragenix modules
-- [x] packages.disko: replace silent null fallback with explicit error
-- [x] modules/services.nix: replace nested conditionals with lib.optionalAttrs
-- [x] modules/services.nix: create fallback group when cfg.group is null
-- [x] modules/base.nix: remove stateVersion default, require explicit setting
-- [x] modules/digitalocean.nix: add comment about unconditional imports
-- [x] modules/disko.nix: guard for upstream disko module presence
-- [x] lib/shell.nix: add cleanup trap in resolveIp
-- [x] README.md: clarify nixosModules.default includes upstream modules
-- [x] templates CI: fix branch gate, use pinned host key instead of ssh-keyscan
-- [x] templates flake.nix: add deploy target comment, simplify module imports
-- [x] templates variables.tf: add input validation
-- [x] templates terraform.tfvars.example: document encryption workflow
-- [x] templates os.nix: remove unused pkgs argument
-- [x] templates services.nix: use neutral dataDir default
+### Independent migrations (parallelizable)
+
+- [x] scripts/common.nu -- shared helpers (parse-identity, resolve-ip,
+      decrypt/encrypt state/vars)
+- [x] scripts/terraform.nu -- all terraform tasks (init, plan, apply, destroy,
+      import, edit-vars, rekey, remote, resolve-ip)
+- [x] scripts/bootstrap.nu -- nixos-anywhere bootstrap
+- [x] scripts/deploy.nu -- deploy-rs wrappers (nixos, service, all)
+
+### Dependent on above
+
+- [x] lib/shell.nix -- rewritten to mkNuScript (nushell wrapper infra)
+- [x] lib/terraform.nix, lib/bootstrap.nix, lib/deploy.nix -- updated to use
+      mkNuScript
+
+### Testing (alongside each migration)
+
+- [x] scripts/common.test.nu -- parse-identity tests
+- [ ] scripts/terraform.test.nu -- unit tests for pure helpers
+- [ ] scripts/deploy.test.nu -- deploy passes separate remote-build/skip-checks
+      flags on non-x86_64 (behavior invariant tests)
+- [ ] scripts/bootstrap.test.nu -- bootstrap rewrites host key in template-style
+      keys.nix (behavior invariant tests)
 
 ## Refactor to idiomatic Nix
 
@@ -34,8 +44,6 @@ makes it proper library-quality Nix before more consumers adopt.
       and type checking
 - [ ] Add `_module.args` passthrough for omnix-specific config so consumers
       don't need to wire specialArgs manually
-- [ ] Break down flake.nix -- separate concerns into importable files (outputs,
-      package definitions) so the main flake.nix stays small and scannable
 
 ## Age-based secret management
 
@@ -96,11 +104,7 @@ automatically.
 
 Validate the full omnix lifecycle end-to-end: provision infrastructure via
 terraform, bootstrap with nixos-anywhere, deploy sample services, verify access
-via remote, then tear everything down. Runs on GitHub Actions (ubuntu-latest)
-since the NixOS closure can't build on macOS without remote-build.
-
-Manual-only trigger via `workflow_dispatch` to control cloud spend (~$0.01-0.05
-per run, a few minutes of a $12/mo droplet).
+via remote, then tear everything down.
 
 - [x] GitHub Actions workflow for full lifecycle (manual trigger)
 - [x] Scaffold test project from template, provision, bootstrap, deploy, verify
@@ -109,16 +113,28 @@ per run, a few minutes of a $12/mo droplet).
       endpoint, verify response
 - [ ] Redeploy test -- deploy a different service profile, verify switchover
 - [ ] `mkIntegrationTest` lib function -- let consumers define their own
-      lifecycle test flows using the same harness, parameterized by their
-      project-specific config (services, keys, node name)
+      lifecycle test flows
 
 ## Not epic
 
 - [ ] Add Hetzner cloud modules -- alternative to DigitalOcean for when we need
       better price/performance or EU hosting
-- [ ] Add ACME/Let's Encrypt module -- rest.api has this, others proxy through
-      nginx on port 80 only
-- [ ] Add logrotate module -- rest.api has it, others don't rotate logs at all
+- [ ] services-flake integration -- portable service management without
+      systemd/NixOS dependency (process-compose backend)
+
+## Completed: Refactoring and new modules
+
+- [x] Migrated from flake-utils to flake-parts
+- [x] Added git-hooks.nix integration with mkGitHooks lib function
+- [x] Switched from nixfmt-classic to nixfmt, added formatter output
+- [x] Added omnix.acme module (Let's Encrypt)
+- [x] Added omnix.firewall enableHTTP/enableHTTPS convenience flags
+- [x] Added omnix.services logrotate integration via logDir option
+- [x] Added omnix.staticSites module (nginx vhosts via symlink swap)
+- [x] Hardened shell helpers (chmod 600 on decrypted files, jq -e)
+- [x] Parameterized targetSystem in deploy.nix
+- [x] Added integration test workflow to template
+- [x] Added resolveIp package to template
 
 ## Completed: Extract and publish omnix
 
@@ -128,7 +144,6 @@ Extracted from moneymentum, published as standalone library at
 - [x] Extract omnix from moneymentum into standalone flake
 - [x] Move omnix to its own repo (`data-cartel/omnix`)
 - [x] Wire moneymentum as first consumer
-- [x] All 6 NixOS modules implemented with typed option interfaces
-- [x] All 4 lib functions (mkTerraform, mkDeploy, mkBootstrap, mkRemote)
-      implemented
+- [x] All 8 NixOS modules implemented with typed option interfaces
+- [x] All 4 lib functions (mkTerraform, mkDeploy, mkBootstrap, mkGitHooks)
 - [x] Flake template (`do-service`) scaffolds complete projects

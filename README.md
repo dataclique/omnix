@@ -3,7 +3,8 @@
 Composable Nix infrastructure for DigitalOcean deployments. Provides NixOS
 modules, library functions, and flake templates for provisioning, deploying, and
 managing services on DigitalOcean with terraform, deploy-rs, and age-encrypted
-secrets.
+secrets. Built with [flake-parts](https://flake.parts/) and
+[nushell](https://www.nushell.sh/) scripts.
 
 ## Quick Start
 
@@ -188,6 +189,12 @@ infraPkgs = omnix.lib.mkTerraform {
 
 The consumer owns its nixpkgs pin and makes omnix follow it -- not the other
 way around.
+
+## Migration Notes
+
+**`lib.mkRemote` removed.** The `remote` SSH wrapper is now part of
+`lib.mkTerraform`'s output. Replace `omnix.lib.mkRemote { ... }` with
+`infraPkgs.remote` (where `infraPkgs = omnix.lib.mkTerraform { ... }`).
 
 See [SPEC.md](./SPEC.md) for design details and [ROADMAP.md](./ROADMAP.md) for
 planned work.

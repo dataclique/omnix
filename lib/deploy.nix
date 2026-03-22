@@ -14,7 +14,6 @@ let
   system = targetSystem;
   inherit (deploy-rs.lib.${system}) activate;
   profileBase = "/nix/var/nix/profiles/per-service";
-
   siteBase = "/var/lib/sites";
 
   enabledServices = builtins.filter (name: services.${name}.enabled) (builtins.attrNames services);
@@ -49,6 +48,8 @@ let
         "systemctl reload nginx || systemctl restart nginx"
       ]
     );
+
+  scriptsDir = ../scripts;
 
 in
 {
@@ -92,29 +93,15 @@ in
       localSystem,
     }:
     let
+      shell = import ./shell.nix { inherit pkgs scriptsDir; };
+      inherit (shell) mkNuScript;
+
       deployInputs = [
         pkgs.rage
         pkgs.jq
+        pkgs.openssh
         deploy-rs.packages.${localSystem}.deploy-rs
       ];
-
-      deployPreamble = ''
-        ${infraPkgs.resolveIp}
-
-        if [ -z "$host_ip" ]; then
-          echo "ERROR: host_ip not resolved" >&2
-          exit 1
-        fi
-
-        ssh_flag=""
-        if [ "$identity" != "$HOME/.ssh/id_ed25519" ]; then
-          export NIX_SSHOPTS="-i $identity"
-          ssh_flag="--ssh-opts=-i $identity"
-        fi
-      '';
-
-      deployFlags =
-        if localSystem == "x86_64-linux" then "--skip-checks" else "--remote-build --skip-checks";
 
       serviceCleanup = builtins.concatStringsSep "; " (
         map (name: "systemctl reset-failed ${name} || true") enabledServices
@@ -122,36 +109,42 @@ in
 
     in
     {
-      deployNixos = pkgs.writeShellApplication {
+      deployNixos = mkNuScript {
         name = "deploy-nixos";
+        script = "deploy.nu";
+        subcommand = "nixos";
         runtimeInputs = deployInputs;
-        text = ''
-          ${deployPreamble}
-          deploy ${deployFlags} --hostname "$host_ip" ''${ssh_flag:+"$ssh_flag"} "$@" .#${nodeName}.system
-        '';
+        extraArgs = [
+          (toString infraPkgs.keysFile or "keys.nix")
+          nodeName
+          localSystem
+        ];
       };
 
-      deployService = pkgs.writeShellApplication {
+      deployService = mkNuScript {
         name = "deploy-service";
+        script = "deploy.nu";
+        subcommand = "service";
         runtimeInputs = deployInputs;
-        text = ''
-          ${deployPreamble}
-          profile="''${1:?usage: deploy-service <profile>}"
-          shift
-          deploy ${deployFlags} --hostname "$host_ip" ''${ssh_flag:+"$ssh_flag"} "$@" ".#${nodeName}.$profile"
-        '';
+        extraArgs = [
+          (toString infraPkgs.keysFile or "keys.nix")
+          nodeName
+          localSystem
+        ];
       };
 
-      deployAll = pkgs.writeShellApplication {
+      deployAll = mkNuScript {
         name = "deploy-all";
-        runtimeInputs = deployInputs ++ [ pkgs.openssh ];
-        text = ''
-          ${deployPreamble}
-
-          ssh -i "$identity" "root@$host_ip" '${serviceCleanup}'
-
-          deploy ${deployFlags} --hostname "$host_ip" ''${ssh_flag:+"$ssh_flag"} "$@" .#${nodeName}
-        '';
+        script = "deploy.nu";
+        subcommand = "all";
+        runtimeInputs = deployInputs;
+        extraArgs = [
+          (toString infraPkgs.keysFile or "keys.nix")
+          nodeName
+          localSystem
+          "--service-cleanup"
+          serviceCleanup
+        ];
       };
     };
 }
