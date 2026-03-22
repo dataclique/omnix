@@ -59,7 +59,7 @@ in
 
     programs.bash.interactiveShellInit = "set -o vi";
 
-    system.activationScripts.per-service-profiles.text = "mkdir -p /nix/var/nix/profiles/per-service";
+    systemd.tmpfiles.rules = [ "d /nix/var/nix/profiles/per-service 0755 root root -" ];
 
     environment.systemPackages =
       with pkgs;
