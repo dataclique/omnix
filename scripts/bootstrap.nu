@@ -42,16 +42,20 @@ export def update-keys-nix [keys_file: string, config_name: string, new_key: str
   let content = (open $keys_file --raw)
   let expected = $'host = "($new_key)"'
 
-  # Scope replacement to the stanza matching config_name when present,
-  # otherwise fall back to replacing the first host occurrence (flat keys.nix).
+  # Scope replacement to the stanza matching config_name.
+  # For flat keys.nix (single node, no config_name in file), allow unscoped
+  # replace only when there is exactly one host entry.
+  let host_count = ($content | parse --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' | length)
   let updated = if ($content | str contains $config_name) {
     let idx = ($content | str index-of $config_name)
     let before = ($content | str substring 0..$idx)
     let after = ($content | str substring $idx..
       | str replace --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' $'host = "($new_key)"')
     $"($before)($after)"
-  } else {
+  } else if $host_count <= 1 {
     $content | str replace --regex 'host\s*=\s*"ssh-ed25519 [^"]*"' $'host = "($new_key)"'
+  } else {
+    error make { msg: $"multiple host entries found in ($keys_file) but config_name '($config_name)' not found; cannot scope replacement" }
   }
 
   if not ($updated | str contains $expected) {

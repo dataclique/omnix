@@ -34,6 +34,18 @@ def "test update-keys-nix scoped to node" [] {
   rm -f $fixture
 }
 
+def "test update-keys-nix rejects unknown node in multi-node" [] {
+  let fixture = (mktemp)
+  "{\n  node-a = {\n    host = \"ssh-ed25519 AAAA_key_a\";\n  };\n  node-b = {\n    host = \"ssh-ed25519 AAAA_key_b\";\n  };\n}" | save -f $fixture
+  let result = (do { update-keys-nix $fixture "node-c" "ssh-ed25519 AAAA_new_c" } | complete)
+  assert ($result.exit_code != 0)
+  let content = (open $fixture --raw)
+  assert ($content | str contains "ssh-ed25519 AAAA_key_a")
+  assert ($content | str contains "ssh-ed25519 AAAA_key_b")
+  assert not ($content | str contains "AAAA_new_c")
+  rm -f $fixture
+}
+
 def main [] {
   let tests = (scope commands
     | where ($it.type == "custom") and ($it.name | str starts-with "test ")
