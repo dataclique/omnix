@@ -1,6 +1,10 @@
 { lib, config, pkgs, ... }:
 
-let cfg = config.omnix.base;
+let
+  cfg = config.omnix.base;
+  shellCfg = cfg.shell;
+  isNushell = shellCfg.defaultShell == "nushell";
+  isZsh = shellCfg.defaultShell == "zsh";
 in {
   options.omnix.base = {
     enable = lib.mkEnableOption "omnix base NixOS settings";
@@ -20,6 +24,40 @@ in {
       type = lib.types.str;
       default = "24.11";
       description = "NixOS state version";
+    };
+
+    shell = {
+      defaultShell = lib.mkOption {
+        type = lib.types.enum [ "bash" "zsh" "nushell" ];
+        default = "bash";
+        description = ''
+          Default interactive shell. Ensures the corresponding shell program
+          is enabled at the system level. Use `shellPackage` to set as a
+          user's login shell.
+        '';
+      };
+
+      shellPackage = lib.mkOption {
+        type = lib.types.package;
+        readOnly = true;
+        description = "The package for the selected default shell, for use in users.users.<name>.shell";
+      };
+
+      bash.viMode = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Enable vi keybindings for interactive bash sessions";
+      };
+
+      nushell.manageConfig = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Whether omnix manages nushell configuration via
+          environment.etc. Set to false to manage nushell config
+          via home-manager or manually.
+        '';
+      };
     };
   };
 
@@ -48,13 +86,36 @@ in {
       };
     };
 
-    programs.bash.interactiveShellInit = "set -o vi";
+    omnix.base.shell.shellPackage =
+      if isNushell then pkgs.nushell
+      else if isZsh then pkgs.zsh
+      else pkgs.bash;
+
+    programs.bash.interactiveShellInit =
+      lib.mkIf shellCfg.bash.viMode "set -o vi";
+
+    programs.zsh.enable = lib.mkIf isZsh true;
+
+    environment.systemPackages = with pkgs;
+      [ bat curl htop rage zellij ]
+      ++ lib.optional isNushell pkgs.nushell
+      ++ cfg.extraPackages;
+
+    environment.shells = lib.mkIf isNushell [ pkgs.nushell ];
+
+    environment.etc = lib.mkIf (isNushell && shellCfg.nushell.manageConfig) {
+      "nushell/config.nu".text = ''
+        $env.config = {
+          show_banner: false
+        }
+      '';
+      "nushell/env.nu".text = ''
+        # omnix managed nushell environment
+      '';
+    };
 
     system.activationScripts.per-service-profiles.text =
       "mkdir -p /nix/var/nix/profiles/per-service";
-
-    environment.systemPackages = with pkgs;
-      [ bat curl htop rage zellij ] ++ cfg.extraPackages;
 
     system.stateVersion = cfg.stateVersion;
   };
