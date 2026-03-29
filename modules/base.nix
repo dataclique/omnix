@@ -94,7 +94,7 @@ in {
     programs.bash.interactiveShellInit =
       lib.mkIf shellCfg.bash.viMode "set -o vi";
 
-    programs.zsh.enable = lib.mkIf isZsh true;
+    programs.zsh.enable = lib.mkDefault isZsh;
 
     environment.systemPackages = with pkgs;
       [ bat curl htop rage zellij ]
