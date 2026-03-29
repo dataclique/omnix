@@ -53,10 +53,43 @@
         default = self.templates.do-service;
       };
     } // flake-utils.lib.eachDefaultSystem (system:
-      let pkgs = import nixpkgs { inherit system; };
+      let
+        pkgs = import nixpkgs { inherit system; };
+
+        # Evaluate a single omnix module in isolation and produce a
+        # derivation that succeeds when the module evaluates cleanly
+        evalModule = name: module:
+          let
+            eval = nixpkgs.lib.nixosSystem {
+              inherit system;
+              modules = [
+                module
+                {
+                  boot.loader.grub.device = "nodev";
+                  fileSystems."/" = { device = "none"; fsType = "tmpfs"; };
+                  nixpkgs.hostPlatform = system;
+                }
+              ];
+            };
+          in pkgs.runCommand "eval-${name}" { } ''
+            # Force evaluation of the module option definitions
+            cat ${eval.config.system.build.toplevel.drvPath} > /dev/null
+            touch $out
+          '';
+
       in {
         # Expose disko and ragenix modules for consumer nixosSystem calls
         packages.disko = disko.packages.${system}.default or null;
         packages.ragenix = ragenix.packages.${system}.default;
+
+        checks = {
+          # Verify each module evaluates without errors in isolation
+          eval-base = evalModule "base" self.nixosModules.base;
+          eval-firewall = evalModule "firewall" self.nixosModules.firewall;
+          eval-storage = evalModule "storage" self.nixosModules.storage;
+          eval-digitalocean = evalModule "digitalocean" self.nixosModules.digitalocean;
+          eval-services = evalModule "services" self.nixosModules.services;
+          eval-disko = evalModule "disko" self.nixosModules.disko;
+        };
       });
 }
