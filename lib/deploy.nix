@@ -44,7 +44,7 @@ let
     activate.custom sitePackage (
       builtins.concatStringsSep " && " [
         "mkdir -p ${siteBase}"
-        "ln -sfn ${sitePackage} ${siteBase}/${name}"
+        "ln -sfnT ${sitePackage} ${siteBase}/${name}"
         "systemctl reload nginx || systemctl restart nginx"
       ]
     );
@@ -81,7 +81,7 @@ in
           name = "site:${name}";
           value = {
             path = mkSiteProfile name staticSites.${name}.package;
-            profilePath = "${profileBase}/${name}";
+            profilePath = "${profileBase}/site-${name}";
           };
         }) enabledSites
       );

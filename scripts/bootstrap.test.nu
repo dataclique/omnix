@@ -6,7 +6,7 @@ let script_dir = (path self | path dirname)
 def "test update-keys-nix single-line" [] {
   let fixture = (mktemp)
   '{ host = "ssh-ed25519 AAAA_old_key"; }' | save -f $fixture
-  update-keys-nix $fixture "ssh-ed25519 AAAA_new_key"
+  update-keys-nix $fixture "my-node" "ssh-ed25519 AAAA_new_key"
   let content = (open $fixture --raw)
   assert ($content | str contains "ssh-ed25519 AAAA_new_key")
   assert not ($content | str contains "AAAA_old_key")
@@ -16,10 +16,33 @@ def "test update-keys-nix single-line" [] {
 def "test update-keys-nix multi-line indented" [] {
   let fixture = (mktemp)
   "{\n  host =\n      \"ssh-ed25519 AAAA_old_key\";\n}" | save -f $fixture
-  update-keys-nix $fixture "ssh-ed25519 AAAA_new_key"
+  update-keys-nix $fixture "my-node" "ssh-ed25519 AAAA_new_key"
   let content = (open $fixture --raw)
   assert ($content | str contains "ssh-ed25519 AAAA_new_key")
   assert not ($content | str contains "AAAA_old_key")
+  rm -f $fixture
+}
+
+def "test update-keys-nix scoped to node" [] {
+  let fixture = (mktemp)
+  "{\n  node-a = {\n    host = \"ssh-ed25519 AAAA_key_a\";\n  };\n  node-b = {\n    host = \"ssh-ed25519 AAAA_key_b\";\n  };\n}" | save -f $fixture
+  update-keys-nix $fixture "node-b" "ssh-ed25519 AAAA_new_b"
+  let content = (open $fixture --raw)
+  assert ($content | str contains "ssh-ed25519 AAAA_new_b")
+  assert ($content | str contains "ssh-ed25519 AAAA_key_a") # node-a unchanged
+  assert not ($content | str contains "AAAA_key_b")
+  rm -f $fixture
+}
+
+def "test update-keys-nix rejects unknown node in multi-node" [] {
+  let fixture = (mktemp)
+  "{\n  node-a = {\n    host = \"ssh-ed25519 AAAA_key_a\";\n  };\n  node-b = {\n    host = \"ssh-ed25519 AAAA_key_b\";\n  };\n}" | save -f $fixture
+  let result = (do { update-keys-nix $fixture "node-c" "ssh-ed25519 AAAA_new_c" } | complete)
+  assert ($result.exit_code != 0)
+  let content = (open $fixture --raw)
+  assert ($content | str contains "ssh-ed25519 AAAA_key_a")
+  assert ($content | str contains "ssh-ed25519 AAAA_key_b")
+  assert not ($content | str contains "AAAA_new_c")
   rm -f $fixture
 }
 

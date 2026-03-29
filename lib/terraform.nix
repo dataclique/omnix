@@ -15,6 +15,7 @@ let
     pkgs.terraform
     pkgs.rage
     pkgs.jq
+    pkgs.coreutils
   ]
   ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
 
@@ -35,7 +36,13 @@ in
   tfApply = mkTfTask { name = "tf-apply"; subcommand = "apply"; };
   tfDestroy = mkTfTask { name = "tf-destroy"; subcommand = "destroy"; };
   tfImport = mkTfTask { name = "tf-import"; subcommand = "import"; };
-  tfEditVars = mkTfTask { name = "tf-edit-vars"; subcommand = "edit-vars"; };
+  tfEditVars = mkNuScript {
+    name = "tf-edit-vars";
+    script = "terraform.nu";
+    subcommand = "edit-vars";
+    runtimeInputs = runtimeInputs ++ [ pkgs.vim ];
+    extraArgs = [ (toString keysFile) ];
+  };
 
   # tfRekey is always available (optionally passes --secrets-rules).
   # rekey only exists when ragenixPkg and secretsRules are both provided,

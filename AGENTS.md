@@ -58,7 +58,11 @@ nixfmt **/*.nix
 
 ### Nushell
 
-All omnix scripts are written in nushell. No bash.
+All omnix scripts are written in nushell. No bash. Nushell gives us structured
+data, explicit types, and — critically — testable functions that can be unit
+tested directly (`nu <name>.test.nu`) and exercised as nix derivation checks
+via `nix flake check`. New scripts should have a corresponding `.test.nu` file
+and a check entry in `flake.nix`.
 
 **Naming:**
 
@@ -112,12 +116,12 @@ All omnix scripts are written in nushell. No bash.
 ### Agent implementations & responsibilities
 
 **bootstrap** (`scripts/bootstrap.nu`)
-- Responsibilities: provision a DigitalOcean droplet via nixos-anywhere, update host keys, optionally rekey secrets
-- Public interface: `main` entrypoint — `nu bootstrap.nu <keys_file> <config_name> [--secrets-rules <path>] [...args]`
+- Responsibilities: provision a DigitalOcean droplet via nixos-anywhere, update host keys (scoped to the target node), optionally rekey secrets
+- Public interface: `main` entrypoint — `nu bootstrap.nu <keys_file> <config_name> [--secrets-rules <path>] [...args]`; `update-keys-nix` accepts `keys_file`, `config_name`, and `new_key` to scope replacement to the correct node stanza
 - Inputs: `keys_file` (path to `keys.nix`), `config_name` (NixOS flake config), optional `--secrets-rules`, passthrough args (`-i <identity>`)
-- Outputs: updated `keys.nix` with new host key; rekeyed secrets if `--secrets-rules` provided
-- Failure modes: SSH timeout (60 retries × 5 s), empty/malformed host key, key replacement failure — all surface explicit `error make` messages
-- Testing: manual integration test via the GitHub Actions lifecycle workflow
+- Outputs: updated `keys.nix` with new host key for the specified node; rekeyed secrets if `--secrets-rules` provided
+- Failure modes: SSH timeout (60 retries × 5 s), empty/malformed host key, key replacement failure (scoped to node stanza) — all surface explicit `error make` messages
+- Testing: direct unit tests via `nu scripts/bootstrap.test.nu` (tests `update-keys-nix` with single-line and multi-line fixtures); integration test via the GitHub Actions lifecycle workflow
 - Dependencies: `nixos-anywhere`, `ssh`, `ragenix` (optional); calls `common.nu` helpers
 
 **terraform** (`scripts/terraform.nu`)
@@ -135,7 +139,7 @@ All omnix scripts are written in nushell. No bash.
 - Inputs: identity file path, keys file, terraform state/vars files in `infra/`
 - Outputs: decrypted/encrypted files, `record<identity, host_ip, rest>` from `resolve-ip`
 - Failure modes: missing recipients, empty IP — explicit `error make` messages
-- Testing: evaluated indirectly through terraform and bootstrap tests
+- Testing: direct unit tests via `nu scripts/common.test.nu` (tests `parse-identity` with various flag combinations); also evaluated indirectly through terraform and bootstrap integration tests
 - Dependencies: `rage`, `jq`, `nix` (for `nix eval`)
 
 **deploy** (`scripts/deploy.nu`, wrapped by `lib/deploy.nix`)
