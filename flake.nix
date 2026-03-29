@@ -56,26 +56,20 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
-        # Evaluate a single omnix module in isolation and produce a
-        # derivation that succeeds when the module evaluates cleanly
+        # Build a minimal NixOS system with a single omnix module to
+        # verify it evaluates and builds without errors in isolation
         evalModule = name: module:
-          let
-            eval = nixpkgs.lib.nixosSystem {
-              inherit system;
-              modules = [
-                module
-                {
-                  boot.loader.grub.device = "nodev";
-                  fileSystems."/" = { device = "none"; fsType = "tmpfs"; };
-                  nixpkgs.hostPlatform = system;
-                }
-              ];
-            };
-          in pkgs.runCommand "eval-${name}" { } ''
-            # Force evaluation of the module option definitions
-            cat ${eval.config.system.build.toplevel.drvPath} > /dev/null
-            touch $out
-          '';
+          (nixpkgs.lib.nixosSystem {
+            inherit system;
+            modules = [
+              module
+              {
+                boot.loader.grub.device = "nodev";
+                fileSystems."/" = { device = "none"; fsType = "tmpfs"; };
+                nixpkgs.hostPlatform = system;
+              }
+            ];
+          }).config.system.build.toplevel;
 
       in {
         # Expose disko and ragenix modules for consumer nixosSystem calls
