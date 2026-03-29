@@ -116,9 +116,8 @@ per run, a few minutes of a $12/mo droplet).
 
 - [ ] Add Hetzner cloud modules -- alternative to DigitalOcean for when we need
       better price/performance or EU hosting
-- [ ] Add ACME/Let's Encrypt module -- rest.api has this, others proxy through
-      nginx on port 80 only
-- [ ] Add logrotate module -- rest.api has it, others don't rotate logs at all
+- [x] Add ACME/Let's Encrypt module -- modules/acme.nix with typed options
+- [x] Add logrotate module -- integrated into modules/services.nix per-service
 
 ## Completed: Extract and publish omnix
 
@@ -128,7 +127,7 @@ Extracted from moneymentum, published as standalone library at
 - [x] Extract omnix from moneymentum into standalone flake
 - [x] Move omnix to its own repo (`data-cartel/omnix`)
 - [x] Wire moneymentum as first consumer
-- [x] All 6 NixOS modules implemented with typed option interfaces
+- [x] All 7 NixOS modules implemented with typed option interfaces
 - [x] All 4 lib functions (mkTerraform, mkDeploy, mkBootstrap, mkGitHooks)
       implemented
 - [x] Flake template (`do-service`) scaffolds complete projects

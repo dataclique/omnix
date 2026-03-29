@@ -29,6 +29,7 @@ Each module is independently usable under the `omnix.*` namespace:
 | `storage`      | `omnix.storage.*`      | DO block storage volume mount                |
 | `services`     | `omnix.services.*`     | Systemd service generation with marker files |
 | `firewall`     | `omnix.firewall.*`     | TCP port allowlist (SSH always included)     |
+| `acme`         | `omnix.acme.*`         | ACME/Let's Encrypt certificate management    |
 
 Use `omnix.nixosModules.default` to import all omnix modules plus upstream disko and ragenix modules at once.
 
