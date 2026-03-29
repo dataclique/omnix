@@ -58,7 +58,7 @@
 
         # Build a minimal NixOS system with a single omnix module to
         # verify it evaluates and builds without errors in isolation
-        evalModule = name: module:
+        evalModule = name: module: extraModules:
           (nixpkgs.lib.nixosSystem {
             inherit system;
             modules = [
@@ -68,7 +68,7 @@
                 fileSystems."/" = { device = "none"; fsType = "tmpfs"; };
                 nixpkgs.hostPlatform = system;
               }
-            ];
+            ] ++ extraModules;
           }).config.system.build.toplevel;
 
       in {
@@ -77,13 +77,15 @@
         packages.ragenix = ragenix.packages.${system}.default;
 
         checks = {
-          # Verify each module evaluates without errors in isolation
-          eval-base = evalModule "base" self.nixosModules.base;
-          eval-firewall = evalModule "firewall" self.nixosModules.firewall;
-          eval-storage = evalModule "storage" self.nixosModules.storage;
-          eval-digitalocean = evalModule "digitalocean" self.nixosModules.digitalocean;
-          eval-services = evalModule "services" self.nixosModules.services;
-          eval-disko = evalModule "disko" self.nixosModules.disko;
+          # Verify each module evaluates and builds without errors in isolation
+          eval-base = evalModule "base" self.nixosModules.base [ ];
+          eval-firewall = evalModule "firewall" self.nixosModules.firewall [ ];
+          eval-storage = evalModule "storage" self.nixosModules.storage [ ];
+          eval-digitalocean = evalModule "digitalocean" self.nixosModules.digitalocean [ ];
+          eval-services = evalModule "services" self.nixosModules.services [ ];
+          eval-disko = evalModule "disko" self.nixosModules.disko [
+            disko.nixosModules.disko
+          ];
         };
       });
 }
