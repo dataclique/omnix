@@ -89,7 +89,7 @@ in {
     omnix.base.shell.shellPackage =
       if isNushell then pkgs.nushell
       else if isZsh then pkgs.zsh
-      else pkgs.bash;
+      else pkgs.bashInteractive;
 
     programs.bash.interactiveShellInit =
       lib.mkIf shellCfg.bash.viMode "set -o vi";
