@@ -30,16 +30,16 @@ Each module is independently usable under the `omnix.*` namespace:
 | `services`     | `omnix.services.*`     | Systemd service generation with marker files |
 | `firewall`     | `omnix.firewall.*`     | TCP port allowlist (SSH always included)     |
 
-Use `omnix.nixosModules.default` to import all modules at once.
+Use `omnix.nixosModules.default` to import all omnix modules plus upstream disko and ragenix modules at once.
 
 ## Library Functions
 
 | Function          | Purpose                                                                   |
 | ----------------- | ------------------------------------------------------------------------- |
-| `lib.mkTerraform` | Terraform wrapper scripts (init, plan, apply, rekey, etc.)                |
+| `lib.mkTerraform` | Terraform wrapper scripts (init, plan, apply, rekey, remote SSH, etc.)    |
 | `lib.mkDeploy`    | deploy-rs config + shell wrappers (deployNixos, deployService, deployAll) |
 | `lib.mkBootstrap` | nixos-anywhere provisioning + host key update                             |
-| `lib.mkRemote`    | SSH helper that resolves host IP from terraform state                     |
+| `lib.mkGitHooks`  | Pre-commit hooks (nixfmt, deadnix, taplo, optional rustfmt)               |
 
 ## Using as a Flake Input
 
@@ -54,9 +54,7 @@ Use `omnix.nixosModules.default` to import all modules at once.
     nixosConfigurations.myservice = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
-        omnix.inputs.disko.nixosModules.disko
-        omnix.inputs.ragenix.nixosModules.default
-        omnix.nixosModules.default  # all omnix modules
+        omnix.nixosModules.default  # all omnix + upstream disko/ragenix modules
         ./os.nix
       ];
     };

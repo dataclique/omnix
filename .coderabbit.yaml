@@ -1,24 +1,34 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 reviews:
+  # Review tone: "chill" (lighter feedback) or "assertive" (more nitpicky,
+  # flags style issues and potential problems). Default: "chill".
+  profile: assertive
+
+  # Show metadata about the review process (ignored files, extra context used,
+  # suppressed comments). Default: false.
+  review_details: true
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  auto_assign_reviewers: false
+  poem: false
+
+  # # When true, CodeRabbit submits "Request Changes" reviews (blocking) instead
+  # # of comments, and auto-approves once all its comments are resolved.
+  # request_changes_workflow: false
+
   auto_review:
+    # Review PRs targeting any branch, not just the default branch. Accepts
+    # regex patterns — ".*" matches all branches.
     base_branches:
       - ".*"
 
-    # Controls the "Reviews paused — this branch is under active development"
-    # message that CodeRabbit posts on PRs. After this many reviewed commits,
-    # it stops reviewing new ones. Default is 5; raised to 10. Set to 0 to
-    # disable entirely.
-    auto_pause_after_reviewed_commits: 10
+    # After this many commits are reviewed on a PR, CodeRabbit pauses automatic
+    # incremental reviews to reduce noise on active PRs. Default: 5, 0 disables.
+    auto_pause_after_reviewed_commits: 7
 
-  profile: assertive
-  request_changes_workflow: false
-  review_details: true
-  collapse_walkthrough: false
-  sequence_diagrams: false
-  estimate_code_review_effort: false
-  auto_apply_labels: true
-  auto_assign_reviewers: false
-  poem: false
+  # Per-path review instructions. Each entry is a glob pattern + instructions
+  # string (max 20k chars) that CodeRabbit includes as extra context when
+  # reviewing matching files.
   path_instructions:
     - path: "*"
       instructions: >-
@@ -30,6 +40,7 @@ reviews:
         technical aspects - suggest improvements if you find violations. Point out gaps in test
         coverage but suggest tests that are not too coupled to the implementation and actually test
         domain invariants and business logic
+
     - path: "**/*.md"
       instructions: >-
         Focus on the contents of the docs and not on cosmetic things like markdown formatting. We

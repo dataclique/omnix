@@ -1,7 +1,18 @@
-{ lib, config, modulesPath, ... }:
+{
+  lib,
+  config,
+  modulesPath,
+  ...
+}:
 
-let cfg = config.omnix.digitalocean;
-in {
+let
+  cfg = config.omnix.digitalocean;
+in
+{
+  # Unconditional: NixOS module imports are always evaluated.
+  # Runtime configuration is gated by lib.mkIf cfg.enable below,
+  # so importing this module with enable = false has no side effects
+  # beyond making the DO/QEMU options available.
   imports = [
     (modulesPath + "/virtualisation/digital-ocean-config.nix")
     (modulesPath + "/profiles/qemu-guest.nix")
@@ -23,7 +34,10 @@ in {
       enable = true;
       network.enable = true;
       settings = {
-        datasource_list = [ "ConfigDrive" "Digitalocean" ];
+        datasource_list = [
+          "ConfigDrive"
+          "Digitalocean"
+        ];
         datasource.ConfigDrive = { };
         datasource.Digitalocean = { };
         cloud_init_modules = [
@@ -36,8 +50,12 @@ in {
           "update_hostname"
           "set_password"
         ];
-        cloud_config_modules =
-          [ "ssh-import-id" "keyboard" "runcmd" "disable_ec2_metadata" ];
+        cloud_config_modules = [
+          "ssh-import-id"
+          "keyboard"
+          "runcmd"
+          "disable_ec2_metadata"
+        ];
         cloud_final_modules = [
           "write_files_deferred"
           "scripts_per_once"
