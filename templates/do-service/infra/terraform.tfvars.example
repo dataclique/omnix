@@ -1,1 +1,3 @@
+# Do not create this file manually. Run `nix run .#tfEditVars` to create
+# an encrypted terraform.tfvars.age instead. This example shows the format.
 do_token = "your_digitalocean_api_token_here"

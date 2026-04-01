@@ -1,5 +1,5 @@
 {
   my-service.enabled = true;
   my-service.bin = "my-service";
-  my-service.dataDir = "/mnt/data/prod";
+  my-service.dataDir = "/mnt/data/my-service";
 }

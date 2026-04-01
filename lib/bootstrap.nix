@@ -1,29 +1,30 @@
 { nixos-anywhere }:
 
-{ pkgs, keysFile, configName, system, ragenixPkg ? null, secretsRules ? null }:
+{
+  pkgs,
+  keysFile,
+  configName,
+  system,
+  ragenixPkg ? null,
+  secretsRules ? null,
+}:
 
 let
-  resolveIp = ''
-    identity=~/.ssh/id_ed25519
-    if [ "''${1:-}" = "-i" ]; then
-      identity="$2"
-      shift 2
-    fi
+  shell = import ./shell.nix { inherit keysFile; };
 
-    if [ -f infra/terraform.tfstate.age ]; then
-      rage -d -i "$identity" infra/terraform.tfstate.age > infra/terraform.tfstate
-    fi
-    host_ip=$(jq -r '.outputs.droplet_ipv4.value' infra/terraform.tfstate)
-    rm -f infra/terraform.tfstate
-  '';
-
-in pkgs.writeShellApplication {
+in
+pkgs.writeShellApplication {
   name = "bootstrap-nixos";
-  runtimeInputs =
-    [ pkgs.rage pkgs.jq pkgs.gnused nixos-anywhere.packages.${system}.default ]
-    ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
+  runtimeInputs = [
+    pkgs.rage
+    pkgs.jq
+    pkgs.gnused
+    pkgs.openssh
+    nixos-anywhere.packages.${system}.default
+  ]
+  ++ (if ragenixPkg != null then [ ragenixPkg ] else [ ]);
   text = ''
-    ${resolveIp}
+    ${shell.resolveIp}
     ssh_opts=(-o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "$identity")
 
     nixos-anywhere --flake ".#${configName}" \
@@ -58,10 +59,14 @@ in pkgs.writeShellApplication {
     fi
 
     echo "Updated host key in keys.nix"
-    ${if ragenixPkg != null && secretsRules != null then ''
-      echo "Rekeying secrets..."
-      ragenix --rules ${secretsRules} -i "$identity" -r
-    '' else
-      ""}
+    ${
+      if ragenixPkg != null && secretsRules != null then
+        ''
+          echo "Rekeying secrets..."
+          ragenix --rules ${secretsRules} -i "$identity" -r
+        ''
+      else
+        ""
+    }
   '';
 }

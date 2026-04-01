@@ -1,11 +1,14 @@
-{ pkgs, lib, ... }:
+{ lib, ... }:
 
-let inherit (import ./keys.nix) roles;
-in {
+let
+  inherit (import ./keys.nix) roles;
+in
+{
   omnix.disko.enable = true;
   omnix.digitalocean.enable = true;
   omnix.base = {
     enable = true;
+    stateVersion = "25.11";
     sshKeys = roles.ssh;
   };
   omnix.storage = {
@@ -26,11 +29,15 @@ in {
     enable = true;
     virtualHosts.default = {
       default = true;
-      listen = [{
-        addr = "0.0.0.0";
-        port = 80;
-      }];
-      locations."/api/" = { proxyPass = "http://127.0.0.1:8000/"; };
+      listen = [
+        {
+          addr = "0.0.0.0";
+          port = 80;
+        }
+      ];
+      locations."/api/" = {
+        proxyPass = "http://127.0.0.1:8000/";
+      };
     };
   };
 }
