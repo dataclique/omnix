@@ -36,13 +36,28 @@
     {
       nixosConfigurations = {
         example-minimal = import ./examples/minimal.nix {
-          inherit self nixpkgs disko ragenix;
+          inherit
+            self
+            nixpkgs
+            disko
+            ragenix
+            ;
         };
         example-single-service = import ./examples/single-service.nix {
-          inherit self nixpkgs disko ragenix;
+          inherit
+            self
+            nixpkgs
+            disko
+            ragenix
+            ;
         };
         example-full = import ./examples/full.nix {
-          inherit self nixpkgs disko ragenix;
+          inherit
+            self
+            nixpkgs
+            disko
+            ragenix
+            ;
         };
       };
 
