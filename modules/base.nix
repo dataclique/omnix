@@ -124,6 +124,10 @@ in
 
     environment.shells = lib.mkIf isNushell [ pkgs.nushell ];
 
+    environment.variables = lib.mkIf (isNushell && shellCfg.nushell.manageConfig) {
+      NU_VENDOR_AUTOLOAD_DIR = "/etc/nushell";
+    };
+
     environment.etc = lib.mkIf (isNushell && shellCfg.nushell.manageConfig) {
       "nushell/config.nu".text = ''
         $env.config = {
