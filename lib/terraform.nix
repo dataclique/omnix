@@ -31,11 +31,26 @@ in
 {
   inherit runtimeInputs;
 
-  tfInit = mkTfTask { name = "tf-init"; subcommand = "init"; };
-  tfPlan = mkTfTask { name = "tf-plan"; subcommand = "plan"; };
-  tfApply = mkTfTask { name = "tf-apply"; subcommand = "apply"; };
-  tfDestroy = mkTfTask { name = "tf-destroy"; subcommand = "destroy"; };
-  tfImport = mkTfTask { name = "tf-import"; subcommand = "import"; };
+  tfInit = mkTfTask {
+    name = "tf-init";
+    subcommand = "init";
+  };
+  tfPlan = mkTfTask {
+    name = "tf-plan";
+    subcommand = "plan";
+  };
+  tfApply = mkTfTask {
+    name = "tf-apply";
+    subcommand = "apply";
+  };
+  tfDestroy = mkTfTask {
+    name = "tf-destroy";
+    subcommand = "destroy";
+  };
+  tfImport = mkTfTask {
+    name = "tf-import";
+    subcommand = "import";
+  };
   tfEditVars = mkNuScript {
     name = "tf-edit-vars";
     script = "terraform.nu";

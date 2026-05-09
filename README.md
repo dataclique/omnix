@@ -196,5 +196,6 @@ way around.
 `lib.mkTerraform`'s output. Replace `omnix.lib.mkRemote { ... }` with
 `infraPkgs.remote` (where `infraPkgs = omnix.lib.mkTerraform { ... }`).
 
+
 See [SPEC.md](./SPEC.md) for design details and [ROADMAP.md](./ROADMAP.md) for
 planned work.

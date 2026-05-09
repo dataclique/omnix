@@ -59,9 +59,11 @@ in
       sshUser = "root";
       user = "root";
 
-      profilesOrder = [ "system" ]
-        ++ map (name: "service:${name}") enabledServices
-        ++ map (name: "site:${name}") enabledSites;
+      profilesOrder = [
+        "system"
+      ]
+      ++ map (name: "service:${name}") enabledServices
+      ++ map (name: "site:${name}") enabledSites;
 
       profiles = {
         system.path =

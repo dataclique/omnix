@@ -48,9 +48,15 @@ let
       // lib.optionalAttrs (cfg.dynamicUser && cfg.group != null) {
         SupplementaryGroups = [ cfg.group ];
       }
-      // lib.optionalAttrs (svcCfg.dataDir != null) {
-        ReadWritePaths = [ svcCfg.dataDir ];
-      };
+      // (
+        let
+          rwPaths = lib.filter (p: p != null) [
+            svcCfg.dataDir
+            svcCfg.logDir
+          ];
+        in
+        lib.optionalAttrs (rwPaths != [ ]) { ReadWritePaths = rwPaths; }
+      );
     };
 
 in

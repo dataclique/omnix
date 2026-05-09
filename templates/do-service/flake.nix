@@ -51,7 +51,7 @@
         };
 
         infraPkgs = omnix.lib.mkTerraform {
-          inherit pkgs system;
+          inherit pkgs;
           keysFile = ./keys.nix;
           ragenixPkg = omnix.inputs.ragenix.packages.${system}.default;
           secretsRules = ./config/secrets.nix;
@@ -80,11 +80,9 @@
             tfDestroy
             tfEditVars
             tfRekey
+            rekey
             remote
             ;
-        }
-        // (if infraPkgs.rekey != null then { inherit (infraPkgs) rekey; } else { })
-        // {
 
           bootstrap = omnix.lib.mkBootstrap {
             inherit pkgs system;

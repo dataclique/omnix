@@ -18,3 +18,23 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - run: nix flake check
+
+  examples:
+    name: "Example: ${{ matrix.example }}"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        example:
+          - example-minimal
+          - example-single-service
+          - example-full
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Evaluate NixOS configuration
+        run: nix eval .#nixosConfigurations.${{ matrix.example }}.config.system.build.toplevel.drvPath
+
+      - name: Build NixOS configuration (dry-run)
+        run: nix build .#nixosConfigurations.${{ matrix.example }}.config.system.build.toplevel --dry-run

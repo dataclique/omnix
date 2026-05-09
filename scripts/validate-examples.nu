@@ -47,9 +47,11 @@ def validate-example [example_dir: string] {
 }
 
 export def main [examples_dir: string = "examples"] {
-  let examples = (glob $"($examples_dir)/*/os.nix" $"($examples_dir)/os.nix"
+  let examples = (
+    (glob $"($examples_dir)/*/os.nix") ++ (glob $"($examples_dir)/os.nix")
     | each {|f| $f | path dirname }
-    | uniq)
+    | uniq
+  )
 
   if ($examples | is-empty) {
     error make { msg: $"no examples found in ($examples_dir)" }

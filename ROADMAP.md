@@ -104,7 +104,11 @@ automatically.
 
 Validate the full omnix lifecycle end-to-end: provision infrastructure via
 terraform, bootstrap with nixos-anywhere, deploy sample services, verify access
-via remote, then tear everything down.
+via remote, then tear everything down. Runs on GitHub Actions (ubuntu-latest)
+since the NixOS closure can't build on macOS without remote-build.
+
+Manual-only trigger via `workflow_dispatch` to control cloud spend (~$0.01-0.05
+per run, a few minutes of a $12/mo droplet).
 
 - [x] GitHub Actions workflow for full lifecycle (manual trigger)
 - [x] Scaffold test project from template, provision, bootstrap, deploy, verify
@@ -113,7 +117,8 @@ via remote, then tear everything down.
       endpoint, verify response
 - [ ] Redeploy test -- deploy a different service profile, verify switchover
 - [ ] `mkIntegrationTest` lib function -- let consumers define their own
-      lifecycle test flows
+      lifecycle test flows using the same harness, parameterized by their
+      project-specific config (services, keys, node name)
 
 ## Not epic
 
@@ -146,4 +151,5 @@ Extracted from moneymentum, published as standalone library at
 - [x] Wire moneymentum as first consumer
 - [x] All 8 NixOS modules implemented with typed option interfaces
 - [x] All 4 lib functions (mkTerraform, mkDeploy, mkBootstrap, mkGitHooks)
+      implemented
 - [x] Flake template (`do-service`) scaffolds complete projects

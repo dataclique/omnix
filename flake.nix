@@ -128,15 +128,18 @@
               touch $out
             '';
 
-            template-do-service = pkgs.runCommand "validate-template-do-service" { nativeBuildInputs = [ pkgs.nushell ]; } ''
-              cd ${self}
-              nu scripts/validate-examples.nu templates/do-service
-              touch $out
-            '';
+            template-do-service =
+              pkgs.runCommand "validate-template-do-service" { nativeBuildInputs = [ pkgs.nushell ]; }
+                ''
+                  cd ${self}
+                  nu scripts/validate-examples.nu templates/do-service
+                  touch $out
+                '';
           }
           // (pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
             example-minimal = self.nixosConfigurations.example-minimal.config.system.build.toplevel;
-            example-single-service = self.nixosConfigurations.example-single-service.config.system.build.toplevel;
+            example-single-service =
+              self.nixosConfigurations.example-single-service.config.system.build.toplevel;
             example-full = self.nixosConfigurations.example-full.config.system.build.toplevel;
           });
 
