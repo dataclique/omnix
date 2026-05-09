@@ -1,11 +1,17 @@
-{ lib, config, pkgs, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.omnix.base;
   shellCfg = cfg.shell;
   isNushell = shellCfg.defaultShell == "nushell";
   isZsh = shellCfg.defaultShell == "zsh";
-in {
+in
+{
   options.omnix.base = {
     enable = lib.mkEnableOption "omnix base NixOS settings";
 
@@ -22,13 +28,16 @@ in {
 
     stateVersion = lib.mkOption {
       type = lib.types.str;
-      default = "24.11";
       description = "NixOS state version";
     };
 
     shell = {
       defaultShell = lib.mkOption {
-        type = lib.types.enum [ "bash" "zsh" "nushell" ];
+        type = lib.types.enum [
+          "bash"
+          "zsh"
+          "nushell"
+        ];
         default = "bash";
         description = ''
           Default interactive shell. Ensures the corresponding shell program
@@ -74,7 +83,10 @@ in {
 
     nix = {
       settings = {
-        experimental-features = [ "nix-command" "flakes" ];
+        experimental-features = [
+          "nix-command"
+          "flakes"
+        ];
         auto-optimise-store = true;
         download-buffer-size = 268435456;
       };
@@ -87,17 +99,26 @@ in {
     };
 
     omnix.base.shell.shellPackage =
-      if isNushell then pkgs.nushell
-      else if isZsh then pkgs.zsh
-      else pkgs.bashInteractive;
+      if isNushell then
+        pkgs.nushell
+      else if isZsh then
+        pkgs.zsh
+      else
+        pkgs.bashInteractive;
 
-    programs.bash.interactiveShellInit =
-      lib.mkIf shellCfg.bash.viMode "set -o vi";
+    programs.bash.interactiveShellInit = lib.mkIf shellCfg.bash.viMode "set -o vi";
 
     programs.zsh.enable = lib.mkDefault isZsh;
 
-    environment.systemPackages = with pkgs;
-      [ bat curl htop rage zellij ]
+    environment.systemPackages =
+      with pkgs;
+      [
+        bat
+        curl
+        htop
+        rage
+        zellij
+      ]
       ++ lib.optional isNushell pkgs.nushell
       ++ cfg.extraPackages;
 
@@ -114,8 +135,7 @@ in {
       '';
     };
 
-    system.activationScripts.per-service-profiles.text =
-      "mkdir -p /nix/var/nix/profiles/per-service";
+    system.activationScripts.per-service-profiles.text = "mkdir -p /nix/var/nix/profiles/per-service";
 
     system.stateVersion = cfg.stateVersion;
   };

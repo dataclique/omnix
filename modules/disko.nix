@@ -1,7 +1,9 @@
 { lib, config, ... }:
 
-let cfg = config.omnix.disko;
-in {
+let
+  cfg = config.omnix.disko;
+in
+{
   options.omnix.disko = {
     enable = lib.mkEnableOption "omnix GPT disk layout";
     device = lib.mkOption {
@@ -12,6 +14,13 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = builtins.hasAttr "disko" config;
+        message = "omnix.disko requires the upstream disko NixOS module. Import disko.nixosModules.disko or use omnix.nixosModules.default which includes it.";
+      }
+    ];
+
     disko.devices.disk.primary = {
       device = lib.mkDefault cfg.device;
       type = "disk";

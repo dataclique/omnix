@@ -1,14 +1,15 @@
 { lib, config, ... }:
 
-let cfg = config.omnix.storage;
-in {
+let
+  cfg = config.omnix.storage;
+in
+{
   options.omnix.storage = {
     enable = lib.mkEnableOption "DigitalOcean block storage volume mount";
 
     volumeName = lib.mkOption {
       type = lib.types.str;
-      description =
-        "DigitalOcean volume name (used in /dev/disk/by-id/scsi-0DO_Volume_<name>)";
+      description = "DigitalOcean volume name (used in /dev/disk/by-id/scsi-0DO_Volume_<name>)";
     };
 
     mountPoint = lib.mkOption {

@@ -2,6 +2,12 @@ variable "do_token" {
   description = "DigitalOcean API token"
   type        = string
   sensitive   = true
+  nullable    = false
+
+  validation {
+    condition     = length(trimspace(var.do_token)) > 0
+    error_message = "do_token must not be empty or whitespace-only."
+  }
 }
 
 variable "ssh_key_name" {
@@ -26,4 +32,9 @@ variable "volume_size_gb" {
   description = "Data volume size in GB"
   type        = number
   default     = 5
+
+  validation {
+    condition     = var.volume_size_gb >= 1 && var.volume_size_gb == floor(var.volume_size_gb)
+    error_message = "volume_size_gb must be an integer >= 1."
+  }
 }
