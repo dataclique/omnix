@@ -148,10 +148,16 @@
             gitbutler-stack = mkNu "gitbutler-stack";
             pr-stack-footer = mkNu "pr-stack-footer";
           };
+
+        # omnix dogfoods its own CI generator: .github/workflows/ci.yml is the
+        # output of mkCI, and the ci-drift check keeps the committed file in
+        # sync with the generator.
+        ciWorkflow = (self.lib.mkCI { inherit pkgs; }).workflow;
       in
       {
         packages.gitbutler-stack = nuScripts.gitbutler-stack;
         packages.pr-stack-footer = nuScripts.pr-stack-footer;
+        packages.ci-workflow = ciWorkflow;
 
         packages.disko =
           disko.packages.${system}.default or (throw "disko package not available for ${system}");
@@ -164,6 +170,14 @@
           };
           nu-gitbutler-stack = nuScripts.gitbutler-stack;
           nu-pr-stack-footer = nuScripts.pr-stack-footer;
+
+          ci-drift = pkgs.runCommand "ci-drift-check" { } ''
+            if ! diff -u ${./.github/workflows/ci.yml} ${ciWorkflow}; then
+              echo "::error::.github/workflows/ci.yml is out of sync with lib/ci.nix; regenerate it" >&2
+              exit 1
+            fi
+            touch $out
+          '';
         }
         // (nixpkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
           eval-base = evalModule self.nixosModules.base [ ];
