@@ -1,4 +1,4 @@
-{ deploy-rs }:
+{ deploy-rs, lib }:
 
 {
   self,
@@ -14,24 +14,35 @@ let
   system = targetSystem;
   inherit (deploy-rs.lib.${system}) activate;
   profileBase = "/nix/var/nix/profiles/per-service";
-
   siteBase = "/var/lib/sites";
 
-  enabledServices = builtins.filter (name: services.${name}.enabled) (builtins.attrNames services);
-  enabledSites = builtins.filter (name: staticSites.${name}.enabled) (builtins.attrNames staticSites);
+  srv = import ./services.nix { inherit lib; } {
+    inherit services;
+    project = nodeName;
+  };
 
+  # Deterministic activation order (see lib/services.nix). Static sites have no
+  # systemd unit and follow the services.
+  enabledServices = srv.orderedNames;
+  enabledSites = builtins.filter (name: staticSites.${name}.enabled or true) (
+    builtins.attrNames staticSites
+  );
+
+  # Marker file gates the unit's ConditionPathExists. Touch it BEFORE restart so
+  # systemd actually starts the unit (an absent marker makes systemd silently
+  # skip the unit and return success), and remove it if the restart fails so a
+  # broken unit can't satisfy the condition on the next system activation.
   mkServiceProfile =
     name:
     let
-      markerFile = "/run/${nodeName}/${name}.ready";
+      markerFile = srv.enabled.${name}.markerFile;
     in
     activate.custom package (
       builtins.concatStringsSep " && " [
         "systemctl stop ${name} || true"
-        "rm -f ${markerFile}"
         "mkdir -p /run/${nodeName}"
         "touch ${markerFile}"
-        "systemctl restart ${name}"
+        "systemctl restart ${name} || { rm -f ${markerFile}; exit 1; }"
       ]
     );
 
@@ -116,10 +127,6 @@ in
       deployFlags =
         if localSystem == "x86_64-linux" then "--skip-checks" else "--remote-build --skip-checks";
 
-      serviceCleanup = builtins.concatStringsSep "; " (
-        map (name: "systemctl reset-failed ${name} || true") enabledServices
-      );
-
     in
     {
       deployNixos = pkgs.writeShellApplication {
@@ -128,6 +135,17 @@ in
         text = ''
           ${deployPreamble}
           deploy ${deployFlags} --hostname "$host_ip" ''${ssh_flag:+"$ssh_flag"} "$@" .#${nodeName}.system
+        '';
+      };
+
+      # Like deployNixos but with --boot: stage the new system as the boot
+      # default without switching, for changes that need a reboot to apply.
+      deployNixosBoot = pkgs.writeShellApplication {
+        name = "deploy-nixos-boot";
+        runtimeInputs = deployInputs;
+        text = ''
+          ${deployPreamble}
+          deploy ${deployFlags} --boot --hostname "$host_ip" ''${ssh_flag:+"$ssh_flag"} "$@" .#${nodeName}.system
         '';
       };
 
@@ -142,14 +160,14 @@ in
         '';
       };
 
+      # reset-failed recovery is handled in-activation by the omnix.services
+      # module (system profile activates first), so deployAll no longer needs a
+      # separate pre-deploy SSH cleanup pass.
       deployAll = pkgs.writeShellApplication {
         name = "deploy-all";
-        runtimeInputs = deployInputs ++ [ pkgs.openssh ];
+        runtimeInputs = deployInputs;
         text = ''
           ${deployPreamble}
-
-          ssh -i "$identity" "root@$host_ip" '${serviceCleanup}'
-
           deploy ${deployFlags} --hostname "$host_ip" ''${ssh_flag:+"$ssh_flag"} "$@" .#${nodeName}
         '';
       };

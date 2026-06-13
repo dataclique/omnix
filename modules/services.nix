@@ -1,4 +1,9 @@
-{ lib, config, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.omnix.services;
@@ -85,6 +90,20 @@ in
       description = "Use systemd DynamicUser for service isolation";
     };
 
+    resetFailedRecovery = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        During system activation, reset any managed service unit left in a
+        failed or activating state by a previous deploy. Managed units use
+        `restartIfChanged = false` + `ConditionPathExists`, so a unit stuck
+        failed (Restart = always crash loop) would otherwise make
+        switch-to-configuration's final units-failed check exit non-zero and
+        trigger a deploy-rs rollback before the per-service profile can install
+        the fix.
+      '';
+    };
+
     configDir = lib.mkOption {
       type = lib.types.path;
       description = "Path to directory containing <service-name>.toml configs";
@@ -98,6 +117,15 @@ in
               type = lib.types.bool;
               default = true;
               description = "Whether this service is deployed and managed";
+            };
+            order = lib.mkOption {
+              type = lib.types.nullOr lib.types.int;
+              default = null;
+              description = ''
+                Deploy-rs activation order (lower activates first). When set,
+                every enabled service must set a unique value; when left unset
+                for all services, activation falls back to alphabetical order.
+              '';
             };
             bin = lib.mkOption {
               type = lib.types.str;
@@ -128,6 +156,19 @@ in
 
   config = lib.mkIf (cfg.definitions != { }) {
     system.activationScripts."${cfg.project}-init".text = "mkdir -p /run/${cfg.project}";
+
+    system.activationScripts."${cfg.project}-reset-failed" = lib.mkIf cfg.resetFailedRecovery {
+      text = ''
+        systemctl=${pkgs.systemd}/bin/systemctl
+        for svc in ${lib.concatStringsSep " " (builtins.attrNames enabledServices)}; do
+          state=$("$systemctl" show -p ActiveState --value "$svc.service" 2>/dev/null || echo "")
+          if [ "$state" = "failed" ] || [ "$state" = "activating" ]; then
+            "$systemctl" stop "$svc.service" 2>/dev/null || true
+            "$systemctl" reset-failed "$svc.service" 2>/dev/null || true
+          fi
+        done
+      '';
+    };
 
     systemd.services = lib.mapAttrs mkService enabledServices;
 

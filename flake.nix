@@ -144,7 +144,24 @@
           eval-firewall = evalModule self.nixosModules.firewall [ ];
           eval-storage = evalModule self.nixosModules.storage [ ];
           eval-digitalocean = evalModule self.nixosModules.digitalocean [ ];
-          eval-services = evalModule self.nixosModules.services [ ];
+          eval-services = evalModule self.nixosModules.services [
+            {
+              omnix.services = {
+                project = "eval-test";
+                configDir = "/tmp/eval-test";
+                definitions = {
+                  first = {
+                    bin = "first";
+                    order = 10;
+                  };
+                  second = {
+                    bin = "second";
+                    order = 20;
+                  };
+                };
+              };
+            }
+          ];
           eval-disko = evalModule self.nixosModules.disko [
             disko.nixosModules.disko
           ];
