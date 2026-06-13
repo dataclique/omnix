@@ -17,6 +17,15 @@
   serviceHooks ? { },
   hostKey ? "/etc/ssh/ssh_host_ed25519_key",
   rageBin ? "/run/current-system/sw/bin/rage",
+  # Deploy transport: how the deploy scripts reach the host.
+  #   { kind = "ip"; }                              resolve the public IPv4 from
+  #                                                 terraform state (default)
+  #   { kind = "tailnet"; magicDnsName = "..."; }   deploy over the tailnet
+  #                                                 MagicDNS name when connected,
+  #                                                 else fall back to the IP
+  transport ? {
+    kind = "ip";
+  },
   staticSites ? { },
   nixosConfig ? null,
   targetSystem ? "x86_64-linux",
@@ -156,10 +165,28 @@ in
         pkgs.rage
         pkgs.jq
         deploy-rs.packages.${localSystem}.deploy-rs
-      ];
+      ]
+      ++ lib.optional (transport.kind == "tailnet") pkgs.tailscale;
+
+      # Resolve $host_ip according to the transport. The tailnet path parses the
+      # identity once, then prefers the MagicDNS name when connected and falls
+      # back to the terraform IP (ipFromState — no second parseIdentity).
+      hostResolve =
+        if transport.kind == "tailnet" then
+          ''
+            ${infraPkgs.parseIdentity}
+            if tailscale status >/dev/null 2>&1; then
+              host_ip="${transport.magicDnsName}"
+            else
+              echo "Tailscale not connected; resolving host via terraform IP" >&2
+              ${infraPkgs.ipFromState}
+            fi
+          ''
+        else
+          infraPkgs.resolveIp;
 
       deployPreamble = ''
-        ${infraPkgs.resolveIp}
+        ${hostResolve}
 
         if [ -z "$host_ip" ]; then
           echo "ERROR: host_ip not resolved" >&2

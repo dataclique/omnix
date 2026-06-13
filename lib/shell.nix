@@ -36,12 +36,20 @@ let
       | rage -e -R /dev/stdin -o ${tfVars}.age ${tfVars}
   '';
 
-  resolveIp = ''
-    ${parseIdentity}
+  # Resolve host_ip from terraform state, assuming `identity` is already set
+  # (i.e. parseIdentity has run). Split out so a caller that already parsed the
+  # identity — e.g. the tailnet transport's fallback path — can read the IP
+  # without re-running parseIdentity (which would re-shift $@ and drop -i).
+  ipFromState = ''
     trap 'rm -f ${tfState}' EXIT
     ${decryptState}
     host_ip=$(jq -e -r '.outputs.droplet_ipv4.value' ${tfState})
     rm -f ${tfState}
+  '';
+
+  resolveIp = ''
+    ${parseIdentity}
+    ${ipFromState}
   '';
 
 in
@@ -54,6 +62,7 @@ in
     encryptState
     decryptVars
     encryptVars
+    ipFromState
     resolveIp
     ;
 }

@@ -16,6 +16,7 @@ let
     encryptState
     decryptVars
     encryptVars
+    ipFromState
     resolveIp
     ;
 
@@ -71,7 +72,12 @@ let
 
 in
 {
-  inherit buildInputs parseIdentity resolveIp;
+  inherit
+    buildInputs
+    parseIdentity
+    ipFromState
+    resolveIp
+    ;
 
   tfInit = mkTask "tf-init" ''
     ${preamble}
