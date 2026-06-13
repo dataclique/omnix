@@ -83,16 +83,48 @@
       let
         pkgs = import nixpkgs { inherit system; };
         hooks = self.lib.mkGitHooks { };
+
+        # Build a minimal NixOS system with a single omnix module to
+        # verify it evaluates and builds without errors in isolation
+        evalModule =
+          module: extraModules:
+          (nixpkgs.lib.nixosSystem {
+            inherit system;
+            modules = [
+              module
+              {
+                boot.loader.grub.device = "nodev";
+                fileSystems."/" = {
+                  device = "none";
+                  fsType = "tmpfs";
+                };
+                nixpkgs.hostPlatform = system;
+              }
+            ]
+            ++ extraModules;
+          }).config.system.build.toplevel;
       in
       {
         packages.disko =
           disko.packages.${system}.default or (throw "disko package not available for ${system}");
         packages.ragenix = ragenix.packages.${system}.default;
 
-        checks.git-hooks = git-hooks.lib.${system}.run {
-          inherit hooks;
-          src = self;
-        };
+        checks = {
+          git-hooks = git-hooks.lib.${system}.run {
+            inherit hooks;
+            src = self;
+          };
+        }
+        // (nixpkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          eval-base = evalModule self.nixosModules.base [ ];
+          eval-firewall = evalModule self.nixosModules.firewall [ ];
+          eval-storage = evalModule self.nixosModules.storage [ ];
+          eval-digitalocean = evalModule self.nixosModules.digitalocean [ ];
+          eval-services = evalModule self.nixosModules.services [ ];
+          eval-disko = evalModule self.nixosModules.disko [
+            disko.nixosModules.disko
+          ];
+        });
 
         formatter = pkgs.nixfmt;
 

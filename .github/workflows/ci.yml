@@ -9,31 +9,12 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  flake-check:
     name: Flake check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v17
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
       - run: nix flake check
-
-  examples:
-    name: "Example: ${{ matrix.example }}"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        example:
-          - example-minimal
-          - example-single-service
-          - example-full
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v17
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
-
-      - name: Evaluate NixOS configuration
-        run: nix eval .#nixosConfigurations.${{ matrix.example }}.config.system.build.toplevel.drvPath
-
-      - name: Build NixOS configuration (dry-run)
-        run: nix build .#nixosConfigurations.${{ matrix.example }}.config.system.build.toplevel --dry-run
