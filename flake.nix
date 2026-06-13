@@ -127,8 +127,32 @@
             ]
             ++ extraModules;
           }).config.system.build.toplevel;
+
+        # Generic version-control nushell tooling, packaged via mkNuScript so
+        # `<name>.test.nu` runs in checkPhase. Opt-in (see adrs/0001): consumers
+        # `nix run omnix#<name>` or inherit the package into their own shell.
+        nuScripts =
+          let
+            mkNu =
+              name:
+              self.lib.mkNuScript {
+                inherit pkgs name;
+                scriptsDir = ./scripts;
+                runtimeInputs = [
+                  but.lib.${system}.gitbutler-cli
+                  pkgs.gh
+                ];
+              };
+          in
+          {
+            gitbutler-stack = mkNu "gitbutler-stack";
+            pr-stack-footer = mkNu "pr-stack-footer";
+          };
       in
       {
+        packages.gitbutler-stack = nuScripts.gitbutler-stack;
+        packages.pr-stack-footer = nuScripts.pr-stack-footer;
+
         packages.disko =
           disko.packages.${system}.default or (throw "disko package not available for ${system}");
         packages.ragenix = ragenix.packages.${system}.default;
@@ -138,6 +162,8 @@
             inherit hooks;
             src = self;
           };
+          nu-gitbutler-stack = nuScripts.gitbutler-stack;
+          nu-pr-stack-footer = nuScripts.pr-stack-footer;
         }
         // (nixpkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
           eval-base = evalModule self.nixosModules.base [ ];
