@@ -109,6 +109,7 @@
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
+            secretspec
             infraPkgs.remote
             deployPkgs.deployNixos
             deployPkgs.deployService
