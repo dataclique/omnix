@@ -1,0 +1,18 @@
+[package]
+name = "omnix-age"
+version = "0.1.0"
+edition = "2021"
+description = "age encryption with SSH keys for omnix — encrypt to role recipients, decrypt with an SSH host/user identity"
+license = "MIT"
+
+[[bin]]
+name = "omnix-age"
+path = "src/main.rs"
+
+[dependencies]
+age = { version = "0.10", features = ["ssh"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+
+[profile.release]
+strip = true
