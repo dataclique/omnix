@@ -89,15 +89,33 @@ Never suppress Nix evaluation errors or warnings.
 
 ### No application opinions
 
-omnix handles infrastructure. It must never contain:
+omnix handles infrastructure. The line is **forced application config vs.
+opt-in building blocks**, not the mere mention of CI or tooling. See
+[adrs/0001-opt-in-ci-and-dev-tooling.md](./adrs/0001-opt-in-ci-and-dev-tooling.md).
 
-- Rust build logic
-- Frontend build logic
-- Dev shell configuration
-- CI pipeline definitions
+**Forbidden** (forced application config):
+
+- Rust or frontend build logic as first-class omnix primitives (nextest
+  matrices, bun builds, `prep.sh`, solidity caching)
+- CI or dev-shell configuration inside `nixosModules` — nothing under `omnix.*`
+  module options configures CI or a dev shell
+- A blessed/dictated dev-shell base or env-var wiring
 - Application-specific systemd timers or services
 
-These belong in consumer repos. omnix provides the building blocks.
+**Allowed** (opt-in building blocks a consumer explicitly wires, where a
+non-user pays nothing) — these live in `lib/`, `scripts/`, `.github/workflows/`,
+never in `modules/`:
+
+- Pure lib functions that emit artifacts (`mkCI` / `mkDeployWorkflow` emitting
+  workflow YAML + a drift-check derivation; `mkNuScript`, `mkSmoke`)
+- Flake `apps` / `packages` (e.g. generic version-control nushell scripts)
+- Inert reusable GitHub workflows callable via `uses:`, doing nothing until a
+  consumer writes a caller
+
+The test: does a consumer opt in by calling/wiring it, and does a non-user pay
+nothing? If yes, it is a building block. If it forces config on every consumer
+or encodes one app's build, it is an application opinion — keep it in the
+consumer repo.
 
 ### Composability
 
