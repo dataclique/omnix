@@ -5,6 +5,18 @@
   nodeName,
   services,
   package,
+  # Opt-in per-service activation hooks, keyed by service name. Each may set:
+  #   secret        path to an age-encrypted file, decrypted on-host with the
+  #                 host key to /run/<nodeName>/<name>.secret (mode 0400)
+  #   validateBin   binary in the service profile run before restart; a non-zero
+  #                 exit fails activation so deploy-rs rolls back
+  #   validateArgs  arguments to validateBin
+  #   chownPaths    paths to chown after decrypt (chownOwner required)
+  #   chownOwner    "user:group" for chownPaths
+  #   recordGitRev  write the deployed git rev to /run/<nodeName>/<name>.git-rev
+  serviceHooks ? { },
+  hostKey ? "/etc/ssh/ssh_host_ed25519_key",
+  rageBin ? "/run/current-system/sw/bin/rage",
   staticSites ? { },
   nixosConfig ? null,
   targetSystem ? "x86_64-linux",
@@ -28,22 +40,59 @@ let
     builtins.attrNames staticSites
   );
 
+  gitRev = self.rev or self.dirtyRev or "unknown";
+
   # Marker file gates the unit's ConditionPathExists. Touch it BEFORE restart so
   # systemd actually starts the unit (an absent marker makes systemd silently
   # skip the unit and return success), and remove it if the restart fails so a
   # broken unit can't satisfy the condition on the next system activation.
+  #
+  # Optional per-service hooks (serviceHooks.<name>) splice the secret pipeline
+  # in between: decrypt -> validate -> chown -> record git rev, all before the
+  # marker so a failure rolls back without leaving the unit startable.
   mkServiceProfile =
     name:
     let
-      markerFile = srv.enabled.${name}.markerFile;
+      svc = srv.enabled.${name};
+      markerFile = svc.markerFile;
+      hooks = serviceHooks.${name} or { };
+      secretPath = "/run/${nodeName}/${name}.secret";
+
+      decryptCmds = lib.optional (
+        hooks ? secret
+      ) "${rageBin} -d -i ${hostKey} ${hooks.secret} | install -D -m 0400 /dev/stdin ${secretPath}";
+
+      validateCmds =
+        lib.optional (hooks ? validateBin)
+          "${svc.profilePath}/bin/${hooks.validateBin} ${
+            builtins.concatStringsSep " " (hooks.validateArgs or [ ])
+          }";
+
+      # Parenthesised so the `|| true` is scoped to chown only — without it the
+      # `||` would rescue a failure from an earlier command in the `&&` chain
+      # (e.g. a failed validate), defeating the rollback.
+      chownCmds =
+        lib.optional ((hooks.chownPaths or [ ]) != [ ] && (hooks.chownOwner or null) != null)
+          "(chown ${hooks.chownOwner} ${builtins.concatStringsSep " " hooks.chownPaths} 2>/dev/null || true)";
+
+      gitRevCmds = lib.optional (hooks.recordGitRev or false
+      ) "echo '${gitRev}' > /run/${nodeName}/${name}.git-rev";
     in
     activate.custom package (
-      builtins.concatStringsSep " && " [
-        "systemctl stop ${name} || true"
-        "mkdir -p /run/${nodeName}"
-        "touch ${markerFile}"
-        "systemctl restart ${name} || { rm -f ${markerFile}; exit 1; }"
-      ]
+      builtins.concatStringsSep " && " (
+        [
+          "systemctl stop ${name} || true"
+          "mkdir -p /run/${nodeName}"
+        ]
+        ++ decryptCmds
+        ++ validateCmds
+        ++ chownCmds
+        ++ gitRevCmds
+        ++ [
+          "touch ${markerFile}"
+          "systemctl restart ${name} || { rm -f ${markerFile}; exit 1; }"
+        ]
+      )
     );
 
   mkProfile = name: {
