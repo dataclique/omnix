@@ -10,6 +10,7 @@ let
 in
 {
   mkServices = import ./services.nix { inherit lib; };
+  mkServiceSecretRules = import ./secret-rules.nix;
   mkTerraform = import ./terraform.nix;
   mkDeploy = import ./deploy.nix { inherit deploy-rs lib; };
   mkBootstrap = import ./bootstrap.nix { inherit nixos-anywhere; };
