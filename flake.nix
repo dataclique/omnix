@@ -157,6 +157,7 @@
             pkgs.nixfmt
             pkgs.deadnix
             pkgs.taplo
+            pkgs.secretspec
             but.lib.${system}.gitbutler-cli
           ];
           shellHook = ''
