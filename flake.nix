@@ -155,11 +155,22 @@
         # output of mkCI, and the ci-drift check keeps the committed file in
         # sync with the generator.
         ciWorkflow = (self.lib.mkCI { inherit pkgs; }).workflow;
+
+        # omnix-owned age CLI: encrypt to role recipients / decrypt with an SSH
+        # identity. The pure-Nix replacement target for the `rage` calls in the
+        # deploy + terraform tooling.
+        omnixAge = pkgs.rustPlatform.buildRustPackage {
+          pname = "omnix-age";
+          version = "0.1.0";
+          src = ./crates/omnix-age;
+          cargoLock.lockFile = ./crates/omnix-age/Cargo.lock;
+        };
       in
       {
         packages.gitbutler-stack = nuScripts.gitbutler-stack;
         packages.pr-stack-footer = nuScripts.pr-stack-footer;
         packages.ci-workflow = ciWorkflow;
+        packages.omnix-age = omnixAge;
 
         packages.disko =
           disko.packages.${system}.default or (throw "disko package not available for ${system}");
@@ -172,6 +183,7 @@
           };
           nu-gitbutler-stack = nuScripts.gitbutler-stack;
           nu-pr-stack-footer = nuScripts.pr-stack-footer;
+          omnix-age = omnixAge;
 
           ci-drift = pkgs.runCommand "ci-drift-check" { } ''
             if ! diff -u ${./.github/workflows/ci.yml} ${ciWorkflow}; then
