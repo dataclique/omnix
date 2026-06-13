@@ -47,6 +47,7 @@
         firewall = import ./modules/firewall.nix;
         staticSites = import ./modules/static-sites.nix;
         acme = import ./modules/acme.nix;
+        tailscale = import ./modules/tailscale.nix;
 
         # Convenience: all modules at once (includes upstream disko + ragenix)
         default = {
@@ -61,6 +62,7 @@
             self.nixosModules.staticSites
             self.nixosModules.firewall
             self.nixosModules.acme
+            self.nixosModules.tailscale
           ];
         };
       };
@@ -204,6 +206,18 @@
           ];
           eval-disko = evalModule self.nixosModules.disko [
             disko.nixosModules.disko
+          ];
+          eval-tailscale = evalModule self.nixosModules.tailscale [
+            {
+              omnix.tailscale = {
+                enable = true;
+                authKeyFile = "/run/agenix/ts-authkey";
+                tls = {
+                  enable = true;
+                  magicDnsName = "host.example.ts.net";
+                };
+              };
+            }
           ];
         });
 
