@@ -13,6 +13,10 @@ the vision and [ROADMAP.md](./ROADMAP.md) for the path.
 
 ## Development Commands
 
+Enter the dev shell first (`direnv allow`, or `nix develop`) — it provides
+`nixfmt`, `deadnix`, `taplo`, and the GitButler CLI `but` (verify with
+`but --version`).
+
 ```bash
 # Check flake validity
 nix flake check
@@ -68,6 +72,16 @@ nixfmt **/*.nix
 ---
 
 ## Workflow & Policies
+
+### Version control
+
+This repo uses the **GitButler CLI (`but`)** for all version-control writes. The
+dev shell wires in the [`but.nix`](https://github.com/data-cartel/but.nix) flake
+input, which puts `but` on `PATH` and symlinks the `gitbutler` agent skill into
+`.claude/skills/gitbutler`. Use `but` instead of `git add` / `commit` / `push` /
+`branch` / `rebase`; read-only `git` inspection (`status`, `log`, `diff`) is
+fine. See the gitbutler skill for the full git-to-but command map. Never
+`but push` or open a PR without an explicit instruction.
 
 ### Quality checks
 

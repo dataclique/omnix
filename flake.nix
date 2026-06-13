@@ -19,6 +19,9 @@
 
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
+
+    but.url = "github:data-cartel/but.nix";
+    but.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -31,6 +34,7 @@
       disko,
       nixos-anywhere,
       git-hooks,
+      but,
       ...
     }:
     {
@@ -84,6 +88,26 @@
         pkgs = import nixpkgs { inherit system; };
         hooks = self.lib.mkGitHooks { };
 
+        # Repo-specific "## This Repository" section spliced into the gitbutler
+        # agent skill provided by the but.nix flake.
+        butRepoNotes = ''
+          ## This Repository
+
+          - **Dev shell provides `but`.** It is on `PATH` via the `but.nix` flake
+            input; run `direnv allow` (or enter `nix develop`) if `but --version`
+            is missing.
+          - **Pre-commit hooks** (`nixfmt`, `deadnix`, `taplo`, via
+            `git-hooks.nix`) run on `but commit`. `but amend` / `but rub` skip
+            them, so prefer new commits and clean up history with squash/reword.
+          - **CI gate:** `nix flake check` must pass (formatting, isolated module
+            evaluation, and full NixOS toplevel builds). Run it before pushing.
+          - **Commit messages:** short, lowercase, imperative; conventional
+            prefixes (`feat:`, `fix:`, `chore:`) where they fit.
+          - **`master` is the default branch.** Never `but push` to it or
+            `but pr new` without an explicit instruction.
+
+        '';
+
         # Build a minimal NixOS system with a single omnix module to
         # verify it evaluates and builds without errors in isolation
         evalModule =
@@ -129,12 +153,16 @@
         formatter = pkgs.nixfmt;
 
         devShells.default = pkgs.mkShell {
-          inherit (self.checks.${system}.git-hooks) shellHook;
           packages = [
             pkgs.nixfmt
             pkgs.deadnix
             pkgs.taplo
+            but.lib.${system}.gitbutler-cli
           ];
+          shellHook = ''
+            ${self.checks.${system}.git-hooks.shellHook}
+            ${but.lib.${system}.installSkillScript { repoNotes = butRepoNotes; }}
+          '';
         };
       }
     );
