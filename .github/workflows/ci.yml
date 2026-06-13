@@ -1,20 +1,19 @@
-name: CI
-
-on:
-  push:
-    branches: [master, main]
-  pull_request:
-
-permissions:
-  contents: read
-
 jobs:
   flake-check:
     name: Flake check
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v22
-      - uses: DeterminateSystems/magic-nix-cache-action@v13
-      - run: nix flake check
+    - uses: actions/checkout@v4
+    - uses: DeterminateSystems/nix-installer-action@v22
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: nix flake check
+    timeout-minutes: 20
+name: CI
+'on':
+  pull_request: null
+  push:
+    branches:
+    - master
+    - main
+permissions:
+  contents: read
