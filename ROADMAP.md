@@ -123,10 +123,10 @@ per run, a few minutes of a $12/mo droplet).
 ## Completed: Extract and publish omnix
 
 Extracted from moneymentum, published as standalone library at
-`data-cartel/omnix`. Moneymentum migrated as first consumer.
+`dataclique/omnix`. Moneymentum migrated as first consumer.
 
 - [x] Extract omnix from moneymentum into standalone flake
-- [x] Move omnix to its own repo (`data-cartel/omnix`)
+- [x] Move omnix to its own repo (`dataclique/omnix`)
 - [x] Wire moneymentum as first consumer
 - [x] All 6 NixOS modules implemented with typed option interfaces
 - [x] All 4 lib functions (mkTerraform, mkDeploy, mkBootstrap, mkGitHooks)

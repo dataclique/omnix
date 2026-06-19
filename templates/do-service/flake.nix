@@ -2,7 +2,7 @@
   description = "My service on DigitalOcean";
 
   inputs = {
-    omnix.url = "github:data-cartel/omnix";
+    omnix.url = "github:dataclique/omnix";
     nixpkgs.follows = "omnix/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
   };

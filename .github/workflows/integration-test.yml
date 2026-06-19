@@ -56,7 +56,7 @@ jobs:
           nix flake init -t ..#do-service
 
           # Point omnix input to the local checkout
-          sed -i 's|github:data-cartel/omnix|path:../|' flake.nix
+          sed -i 's|github:dataclique/omnix|path:../|' flake.nix
 
           # Rename resources to avoid collisions with real infra
           sed -i 's/my-service/omnix-integration-test/g' infra/main.tf
