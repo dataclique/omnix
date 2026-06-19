@@ -9,7 +9,7 @@ secrets.
 
 ```bash
 mkdir my-service && cd my-service
-nix flake init -t github:data-cartel/omnix#do-service
+nix flake init -t github:dataclique/omnix#do-service
 # Fill in keys.nix with your SSH public keys
 # Set up terraform: nix run .#tfEditVars
 # Provision: nix run .#tfInit && nix run .#tfPlan && nix run .#tfApply
@@ -170,7 +170,7 @@ infraPkgs = omnix.lib.mkTerraform {
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    omnix.url = "github:data-cartel/omnix";
+    omnix.url = "github:dataclique/omnix";
     omnix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
